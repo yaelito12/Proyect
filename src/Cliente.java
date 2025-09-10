@@ -1,13 +1,22 @@
 package cliente;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 
 public class Cliente {
     public static void main(String[] args) throws IOException {
-        
-      Socket socket = new Socket("localhost", 1234);
-         System.out.println("Cliente conectado");
-         socket.close();
-    }
-}
+  final String HOST = "localhost";
+        final int PUERTO = 1234;
+
+        try (
+            Socket socket = new Socket(HOST, PUERTO);
+            BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
+            BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in))
+        ) {
+            // === Commit: conectar-cliente ===
+            String mensajeServidor;
+        }}}
