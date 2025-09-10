@@ -1,6 +1,7 @@
+package cliente;
 
 public class Cliente {
-  public static void main(String[] args) {
-        System.out.println("Cliente iniciado...");
+    public static void main(String[] args) {
+        // entrada del programa
     }
 }
