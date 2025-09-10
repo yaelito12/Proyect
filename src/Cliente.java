@@ -1,6 +1,13 @@
+package cliente;
+
+import java.io.IOException;
+import java.net.Socket;
 
 public class Cliente {
-  public static void main(String[] args) {
-        System.out.println("Cliente iniciado...");
+    public static void main(String[] args) throws IOException {
+        
+      Socket socket = new Socket("localhost", 1234);
+         System.out.println("Cliente conectado");
+         socket.close();
     }
 }
