@@ -32,6 +32,16 @@ public class SerVerr {
                 String opcion = entrada.readLine();
 
                 
+                  if ("1".equals(opcion)) {
+                    registrarUsuario(entrada, salida);
+                } else if ("2".equals(opcion)) {
+                    iniciarSesion(entrada, salida);
+                } else {
+                    salida.println("Opción inválida.");
+                }
+
+                   socket.close();
+
                 socket.close();
             }
 
