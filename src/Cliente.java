@@ -17,6 +17,15 @@ public class Cliente {
             PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in))
         ) {
-            // === Commit: conectar-cliente ===
+         
             String mensajeServidor;
+            
+              mensajeServidor = entrada.readLine();
+            System.out.println(mensajeServidor);
+            String opcion = teclado.readLine();
+            salida.println(opcion);
+
+            
+            
+            
         }}}
