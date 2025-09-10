@@ -28,6 +28,9 @@ public class SerVerr {
    BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
                 
+                  salida.println("¿Quieres registrarte (1) o iniciar sesión (2)?");
+                String opcion = entrada.readLine();
+
                 
                 socket.close();
             }
