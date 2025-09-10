@@ -7,7 +7,7 @@ public class Cliente {
     public static void main(String[] args) throws IOException {
         
       Socket socket = new Socket("localhost", 1234);
-        
+         System.out.println("Cliente conectado");
          socket.close();
     }
 }
