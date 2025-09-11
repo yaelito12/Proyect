@@ -19,18 +19,18 @@ public class Cliente {
         ) {
             System.out.println("Conectado al servidor " + HOST + ":" + PUERTO);
             
-            // NUEVO: Leer mensajes del servidor
-            String mensajeServidor1 = entrada.readLine();
-            System.out.println(mensajeServidor1);
+            
+            String header = entrada.readLine();
+            System.out.println(header);
             
             String mensajeServidor2 = entrada.readLine();
             System.out.print(mensajeServidor2 + " ");
             
-            // Leer input del usuario y enviarlo
+           
             String respuesta = teclado.readLine();
             salida.println(respuesta);
             
-            // NUEVO: Leer confirmación del servidor
+            
             String confirmacion = entrada.readLine();
             System.out.println(confirmacion);
             
