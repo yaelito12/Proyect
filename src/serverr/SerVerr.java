@@ -9,36 +9,56 @@ import java.util.concurrent.Executors;
 
 public class SerVerr {
     private static final int PUERTO = 1234;
-    private static ExecutorService pool = Executors.newFixedThreadPool(10); 
-    
+    private static ExecutorService pool = Executors.newFixedThreadPool(10);
+
     public static void main(String[] args) {
         try (ServerSocket servidor = new ServerSocket(PUERTO)) {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
             System.out.println("Esperando conexiones...");
 
+          
+            Thread control = new Thread(() -> {
+                try (BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
+                    String comando;
+                    while ((comando = consola.readLine()) != null) {
+                        if (comando.equalsIgnoreCase("stop")) {
+                            System.out.println("Cerrando servidor...");
+                            try {
+                                servidor.close(); 
+                                pool.shutdownNow(); 
+                            } catch (IOException e) {
+                                System.err.println("Error cerrando servidor: " + e.getMessage());
+                            }
+                            break;
+                        }
+                    }
+                } catch (IOException e) {
+                    System.err.println("Error leyendo consola: " + e.getMessage());
+                }
+            });
+            control.start();
+
+          
             while (true) {
                 Socket socket = servidor.accept();
                 System.out.println("Cliente conectado desde: " + socket.getInetAddress());
-                
-               
                 pool.submit(new ManejadorCliente(socket));
             }
 
         } catch (IOException e) {
-            System.out.println("Error en el servidor: " + e.getMessage());
+            System.out.println("Servidor detenido: " + e.getMessage());
         } finally {
-            pool.shutdown(); 
+            pool.shutdown();
         }
     }
-    
-  
+
     static class ManejadorCliente implements Runnable {
         private Socket socket;
-        
+
         public ManejadorCliente(Socket socket) {
             this.socket = socket;
         }
-        
+
         @Override
         public void run() {
             try (BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -74,7 +94,8 @@ public class SerVerr {
                             salida.println("Opción inválida");
                     }
                 }
-  } catch (IOException e) {
+
+            } catch (IOException e) {
                 System.err.println("Error manejando cliente: " + e.getMessage());
             } finally {
                 try {
@@ -85,7 +106,9 @@ public class SerVerr {
                 }
             }
         }
-         private void manejarLogin(BufferedReader entrada, PrintWriter salida) throws IOException {
+
+    
+        private void manejarLogin(BufferedReader entrada, PrintWriter salida) throws IOException {
             salida.println("=== LOGIN ===");
             salida.println("Ingrese usuario:");
             String username = entrada.readLine();
@@ -101,8 +124,9 @@ public class SerVerr {
                 System.out.println("Intento de login fallido para: " + username);
             }
         }
-         
-         private void manejarRegistro(BufferedReader entrada, PrintWriter salida) throws IOException {
+
+        // === REGISTRO ===
+        private void manejarRegistro(BufferedReader entrada, PrintWriter salida) throws IOException {
             salida.println("=== REGISTRO ===");
             salida.println("Ingrese nuevo usuario:");
             String username = entrada.readLine();
@@ -148,56 +172,61 @@ public class SerVerr {
             }
         }
 
-private synchronized boolean guardarUsuario(String usuario, String password) {
-    try (FileWriter fw = new FileWriter("usuarios.txt", true);
-         BufferedWriter bw = new BufferedWriter(fw);
-         PrintWriter pw = new PrintWriter(bw)) {
-        pw.println(usuario + ":" + password);
-        return true;
-    } catch (IOException e) {
-        System.err.println("Error guardando usuario: " + e.getMessage());
-        return false;
-    }
-}private boolean usuarioExiste(String usuario) {
-    try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
-        String linea;
-        while ((linea = br.readLine()) != null) {
-            String[] partes = linea.split(":");
-            if (partes[0].equals(usuario)) {
+        private synchronized boolean guardarUsuario(String usuario, String password) {
+            try (FileWriter fw = new FileWriter("usuarios.txt", true);
+                 BufferedWriter bw = new BufferedWriter(fw);
+                 PrintWriter pw = new PrintWriter(bw)) {
+                pw.println(usuario + ":" + password);
                 return true;
+            } catch (IOException e) {
+                System.err.println("Error guardando usuario: " + e.getMessage());
+                return false;
             }
         }
-    } catch (IOException e) {
-        return false;
-    }
-    return false;
-}private boolean verificarLogin(String usuario, String password) {
-    try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
-        String linea;
-        while ((linea = br.readLine()) != null) {
-            String[] partes = linea.split(":");
-            if (partes[0].equals(usuario) && partes[1].equals(password)) {
-                return true;
-            }
-        }
-    } catch (IOException e) {
-        return false;
-    }
-    return false;
-}
 
-private String hashPassword(String password) {
-    try {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        byte[] hashBytes = md.digest(password.getBytes());
-        StringBuilder sb = new StringBuilder();
-        for (byte b : hashBytes) {
-            sb.append(String.format("%02x", b));
+        private boolean usuarioExiste(String usuario) {
+            try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
+                String linea;
+                while ((linea = br.readLine()) != null) {
+                    String[] partes = linea.split(":");
+                    if (partes[0].equals(usuario)) {
+                        return true;
+                    }
+                }
+            } catch (IOException e) {
+                return false;
+            }
+            return false;
         }
-        return sb.toString();
-    } catch (NoSuchAlgorithmException e) {
-        throw new RuntimeException("Error creando hash", e);
-    }
-}
+
+        private boolean verificarLogin(String usuario, String passwordHash) {
+            try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
+                String linea;
+                while ((linea = br.readLine()) != null) {
+                    String[] partes = linea.split(":");
+                    if (partes.length == 2 && partes[0].equals(usuario) && partes[1].equals(passwordHash)) {
+                        return true;
+                    }
+                }
+            } catch (IOException e) {
+                return false;
+            }
+            return false;
+        }
+
+    
+        private String hashPassword(String password) {
+            try {
+                MessageDigest md = MessageDigest.getInstance("SHA-256");
+                byte[] hashBytes = md.digest(password.getBytes());
+                StringBuilder sb = new StringBuilder();
+                for (byte b : hashBytes) {
+                    sb.append(String.format("%02x", b));
+                }
+                return sb.toString();
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException("Error creando hash", e);
+            }
+        }
     }
 }
