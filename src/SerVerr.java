@@ -257,6 +257,33 @@ public class SerVerr {
             }
         }
         
+        private void chatConServidor(BufferedReader entrada, PrintWriter salida) throws IOException {
+    salida.println("=== MODO CHAT ===");
+    salida.println("Escribe 'salir' para terminar la conversación.");
+
+    try (BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
+        String mensajeCliente, mensajeServidor;
+
+        while ((mensajeCliente = entrada.readLine()) != null) {
+            if (mensajeCliente.equalsIgnoreCase("salir")) {
+                salida.println("El cliente salió del chat.");
+                break;
+            }
+            System.out.println("Cliente dice: " + mensajeCliente);
+
+            // Leer mensaje desde la consola del servidor
+            System.out.print("Servidor: ");
+            mensajeServidor = consola.readLine();
+            if (mensajeServidor == null || mensajeServidor.equalsIgnoreCase("salir")) {
+                salida.println("El servidor salió del chat.");
+                break;
+            }
+            salida.println("Servidor: " + mensajeServidor);
+        }
+    }
+}
+
+      
         private void juegoAdivinaNumero(BufferedReader entrada, PrintWriter salida) throws IOException {
     boolean seguirJugando = true;
     while (seguirJugando) {
@@ -303,6 +330,8 @@ public class SerVerr {
             salida.println("¡Gracias por jugar!");
         }
     }
+    
+    
 }
     }
 }
