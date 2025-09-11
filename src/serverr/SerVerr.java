@@ -43,27 +43,43 @@ public class SerVerr {
         public void run() {
             try (BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter salida = new PrintWriter(socket.getOutputStream(), true)) {
-                
-                
+
                 String clienteIP = socket.getInetAddress().toString();
                 System.out.println("Hilo iniciado para cliente: " + clienteIP);
-                
-                
-                salida.println("¡Hola! Estas conectado al servidor (Hilo: " + Thread.currentThread().getName() + ")");
-                salida.println("Escribe algo:");
-                
-                 String mensaje = entrada.readLine();
-                System.out.println("Cliente " + clienteIP + " escribió: " + mensaje);
-                
-                // Responder al cliente
-                salida.println("Servidor recibió: " + mensaje);
-       
-            } catch (IOException e) {
-                     System.err.println("Error manejando cliente: " + e.getMessage());
+
+                boolean activo = true;
+                while (activo) {
+                    // Menú de autenticación
+                    salida.println("=== MENU ===");
+                    salida.println("1. Login");
+                    salida.println("2. Registro");
+                    salida.println("3. Salir");
+                    salida.println("Elija una opción:");
+                    String opcion = entrada.readLine();
+
+                    if (opcion == null) break;
+
+                    switch (opcion) {
+                        case "1":
+                            manejarLogin(entrada, salida);
+                            break;
+                        case "2":
+                            manejarRegistro(entrada, salida);
+                            break;
+                        case "3":
+                            salida.println("Desconectando...");
+                            activo = false;
+                            break;
+                        default:
+                            salida.println("Opción inválida");
+                    }
+                }
+  } catch (IOException e) {
+                System.err.println("Error manejando cliente: " + e.getMessage());
             } finally {
                 try {
                     socket.close();
-                  System.out.println("Cliente " + socket.getInetAddress() + " desconectado");   
+                    System.out.println("Cliente " + socket.getInetAddress() + " desconectado");
                 } catch (IOException e) {
                     System.err.println("Error cerrando socket: " + e.getMessage());
                 }
