@@ -21,8 +21,12 @@ public class SerVerr {
                     while ((comando = consola.readLine()) != null) {
                         if (comando.equalsIgnoreCase("stop")) {
                             System.out.println("Cerrando servidor...");
-                            servidor.close();
-                            pool.shutdownNow();
+                            try {
+                                servidor.close(); 
+                                pool.shutdownNow(); 
+                            } catch (IOException e) {
+                                System.err.println("Error cerrando servidor: " + e.getMessage());
+                            }
                             break;
                         }
                     }
@@ -57,15 +61,20 @@ public class SerVerr {
             try (BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter salida = new PrintWriter(socket.getOutputStream(), true)) {
 
-                while (true) {
+                String clienteIP = socket.getInetAddress().toString();
+                System.out.println("Hilo iniciado para cliente: " + clienteIP);
+
+                // Menú principal con bucle para manejar opciones inválidas
+                boolean salirMenu = false;
+                while (!salirMenu) {
                     salida.println("=== SISTEMA DE AUTENTICACION ===");
-                    salida.println("1. Iniciar sesión");
+                    salida.println("1. Iniciar sesion");
                     salida.println("2. Registrarse");
                     salida.println("3. Salir");
-                    salida.println("Seleccione una opción (1-3):");
-
+                    salida.println("Seleccione una opcion (1-3):"); 
+                    
                     String opcion = entrada.readLine();
-                    if (opcion == null) break;
+                    if (opcion == null) return;
 
                     switch (opcion.trim()) {
                         case "1":
@@ -76,9 +85,12 @@ public class SerVerr {
                             break;
                         case "3":
                             salida.println("¡Hasta luego!");
-                            return;
+                            salirMenu = true;
+                            break;
                         default:
-                            salida.println("⚠ Opción no válida. Intente de nuevo.");
+                            salida.println("ERROR:Opcion no valida. Por favor seleccione 1, 2 o 3.");
+                            salida.println("CONTINUAR"); // Señal para que el cliente continue
+                            break;
                     }
                 }
 
@@ -99,82 +111,97 @@ public class SerVerr {
             salida.println("Ingrese usuario:");
             String username = entrada.readLine();
             if (username == null) return;
-
             salida.println("Ingrese password:");
             String password = entrada.readLine();
             if (password == null) return;
 
             if (verificarLogin(username.trim(), hashPassword(password))) {
                 salida.println("¡Bienvenido " + username.trim() + "!");
+                System.out.println("Usuario " + username.trim() + " inicio sesion correctamente");
 
-                // Menú post-login
-                boolean opcionValida = false;
-                while (!opcionValida) {
+                // Menú post login con bucle para manejar opciones inválidas
+                boolean salirPostLogin = false;
+                while (!salirPostLogin) {
                     salida.println("¿Qué deseas hacer?");
                     salida.println("1. Jugar 'Adivina el número'");
                     salida.println("2. Chatear con el servidor");
-                    salida.println("Elige una opción (1-2):");
-                    String opcion = entrada.readLine();
-                    if (opcion == null) return;
+                    salida.println("3. Cerrar sesión");
+                    salida.println("Elige una opción (1-3):");
+                    
+                    String opcionPostLogin = entrada.readLine();
+                    if (opcionPostLogin == null) return;
 
-                    switch (opcion.trim()) {
+                    switch (opcionPostLogin.trim()) {
                         case "1":
-                            opcionValida = true;
                             juegoAdivinaNumero(entrada, salida);
                             break;
                         case "2":
-                            opcionValida = true;
                             manejarChat(entrada, salida);
                             break;
+                        case "3":
+                            salida.println("Sesión cerrada. ¡Hasta luego!");
+                            salirPostLogin = true;
+                            break;
                         default:
-                            salida.println("⚠ Opción inválida. Por favor, elige 1 o 2.");
+                            salida.println("ERROR:Opción no válida. Por favor seleccione 1, 2 o 3.");
+                            salida.println("CONTINUAR");
+                            break;
                     }
                 }
-
             } else {
-                salida.println("⚠ Usuario o password incorrectos");
+                salida.println("Usuario o password incorrectos");
+                System.out.println("Intento de login fallido para: " + username.trim());
             }
         }
-
+        
         private void manejarRegistro(BufferedReader entrada, PrintWriter salida) throws IOException {
             salida.println("=== REGISTRO ===");
+            salida.println("Ingrese nuevo usuario:");
+            String username = entrada.readLine();
+            if (username == null) return;
 
-            while (true) {
-                salida.println("Ingrese nuevo usuario:");
-                String username = entrada.readLine();
-                if (username == null) return;
-                username = username.trim();
-                if (username.isEmpty()) {
-                    salida.println("⚠ El usuario no puede estar vacío");
-                    continue;
-                }
-                if (usuarioExiste(username)) {
-                    salida.println("⚠ El usuario ya existe. Intente otro.");
-                    continue;
-                }
+            username = username.trim();
 
-                salida.println("Ingrese password (mínimo 4 caracteres, sin espacios):");
-                String password = entrada.readLine();
-                if (password == null) return;
-                if (password.length() < 4 || password.contains(" ")) {
-                    salida.println("⚠ Contraseña inválida. Intente otra vez.");
-                    continue;
-                }
+            if (username.isEmpty()) {
+                salida.println("ERROR: El usuario no puede estar vacío");
+                return;
+            }
 
-                salida.println("Confirme password:");
-                String confirmPassword = entrada.readLine();
-                if (confirmPassword == null) return;
-                if (!password.equals(confirmPassword)) {
-                    salida.println("⚠ Las passwords no coinciden. Intente otra vez.");
-                    continue;
-                }
+            if (usuarioExiste(username)) {
+                salida.println("El usuario ya existe");
+                System.out.println("Intento de registro fallido: usuario " + username + " ya existe");
+                return;
+            }
 
-                if (guardarUsuario(username, hashPassword(password))) {
-                    salida.println("✅ Usuario " + username + " registrado correctamente");
-                } else {
-                    salida.println("⚠ Error registrando usuario");
-                }
-                break;
+            salida.println("Ingrese password:");
+            String password = entrada.readLine();
+            if (password == null) return;
+
+            if (password.length() < 4) {
+                salida.println("ERROR: La password debe tener al menos 4 caracteres");
+                return;
+            }
+
+            if (password.contains(" ")) {
+                salida.println("ERROR: La contraseña no puede contener espacios");
+                return;
+            }
+
+            salida.println("Confirme password:");
+            String confirmPassword = entrada.readLine();
+            if (confirmPassword == null) return;
+
+            if (!password.equals(confirmPassword)) {
+                salida.println("ERROR: Las passwords no coinciden");
+                return;
+            }
+
+            if (guardarUsuario(username, hashPassword(password))) {
+                salida.println("EXITO: Usuario " + username + " registrado correctamente");
+                System.out.println("Usuario " + username + " registrado correctamente");
+            } else {
+                salida.println("ERROR: Error registrando usuario");
+                System.out.println("Error registrando usuario " + username);
             }
         }
 
@@ -185,6 +212,7 @@ public class SerVerr {
                 pw.println(usuario + ":" + password);
                 return true;
             } catch (IOException e) {
+                System.err.println("Error guardando usuario: " + e.getMessage());
                 return false;
             }
         }
@@ -194,7 +222,9 @@ public class SerVerr {
                 String linea;
                 while ((linea = br.readLine()) != null) {
                     String[] partes = linea.split(":", 2);
-                    if (partes.length >= 1 && partes[0].equals(usuario)) return true;
+                    if (partes.length >= 1 && partes[0].equals(usuario)) {
+                        return true;
+                    }
                 }
             } catch (IOException e) {
                 return false;
@@ -207,8 +237,9 @@ public class SerVerr {
                 String linea;
                 while ((linea = br.readLine()) != null) {
                     String[] partes = linea.split(":", 2);
-                    if (partes.length == 2 && partes[0].equals(usuario) && partes[1].equals(passwordHash))
+                    if (partes.length == 2 && partes[0].equals(usuario) && partes[1].equals(passwordHash)) {
                         return true;
+                    }
                 }
             } catch (IOException e) {
                 return false;
@@ -230,11 +261,79 @@ public class SerVerr {
             }
         }
 
-        // ===== JUEGO =====
+        private void manejarChat(BufferedReader entrada, PrintWriter salida) throws IOException {
+            salida.println("CHAT_INICIADO");
+            salida.println("=== CHAT CON EL SERVIDOR ===");
+            salida.println("Escribe tus mensajes. Para salir escribe 'salir'");
+            salida.println("ESPERANDO_MENSAJE");
+            
+            System.out.println("\n=== CHAT INICIADO CON CLIENTE ===");
+            System.out.println("Cliente: " + socket.getInetAddress());
+            System.out.println("Para salir del chat, escribe 'salir' desde la consola del servidor");
+            
+            // Crear BufferedReader dedicado para este hilo de chat
+            BufferedReader consolaChat = new BufferedReader(new InputStreamReader(System.in));
+            final boolean[] chatActivo = {true}; // Usar array para modificar desde hilos
+            
+            // Hilo para recibir mensajes del cliente
+            Thread hiloReceptor = new Thread(() -> {
+                try {
+                    String mensajeCliente;
+                    while (chatActivo[0] && (mensajeCliente = entrada.readLine()) != null) {
+                        if (mensajeCliente.equalsIgnoreCase("salir")) {
+                            System.out.println("\n[SISTEMA] Cliente salió del chat.");
+                            salida.println("CHAT_CERRADO_POR_CLIENTE");
+                            chatActivo[0] = false;
+                            break;
+                        }
+                        System.out.println("\n[Cliente]: " + mensajeCliente);
+                        System.out.print("Servidor: ");
+                    }
+                } catch (IOException e) {
+                    if (chatActivo[0]) {
+                        System.out.println("\n[SISTEMA] Error en el chat: " + e.getMessage());
+                    }
+                }
+            });
+            
+            hiloReceptor.start();
+            
+            // Hilo principal para enviar mensajes desde la consola del servidor
+            try {
+                String mensajeServidor;
+                while (chatActivo[0]) {
+                    System.out.print("Servidor: ");
+                    mensajeServidor = consolaChat.readLine();
+                    
+                    if (mensajeServidor == null || mensajeServidor.equalsIgnoreCase("salir")) {
+                        salida.println("CHAT_CERRADO_POR_SERVIDOR");
+                        salida.println("El servidor cerró el chat.");
+                        System.out.println("[SISTEMA] Chat cerrado por el servidor.");
+                        chatActivo[0] = false;
+                        break;
+                    }
+                    
+                    if (chatActivo[0]) {
+                        salida.println("MENSAJE_SERVIDOR:" + mensajeServidor);
+                    }
+                }
+            } finally {
+                chatActivo[0] = false;
+                hiloReceptor.interrupt();
+                try {
+                    consolaChat.close();
+                } catch (IOException e) {
+                    // Ignorar errores al cerrar
+                }
+            }
+            
+            System.out.println("[SISTEMA] Chat finalizado.\n");
+        }
+        
         private void juegoAdivinaNumero(BufferedReader entrada, PrintWriter salida) throws IOException {
             boolean seguirJugando = true;
             while (seguirJugando) {
-                int numeroSecreto = 1 + (int) (Math.random() * 10);
+                int numeroSecreto = 1 + (int)(Math.random() * 10);
                 int intentos = 3;
                 boolean acertado = false;
 
@@ -250,6 +349,10 @@ public class SerVerr {
                     int numero;
                     try {
                         numero = Integer.parseInt(respuesta.trim());
+                        if (numero < 1 || numero > 10) {
+                            salida.println("⚠ Por favor, ingresa un número entre 1 y 10.");
+                            continue;
+                        }
                     } catch (NumberFormatException e) {
                         salida.println("⚠ Entrada inválida. Ingresa un número entre 1 y 10.");
                         continue;
@@ -270,49 +373,25 @@ public class SerVerr {
                     salida.println("❌ Perdiste. El número era: " + numeroSecreto);
                 }
 
-                salida.println("¿Quieres jugar otra vez? (s/n):");
-                String respuesta = entrada.readLine();
-                if (respuesta == null || !respuesta.trim().equalsIgnoreCase("s")) {
-                    seguirJugando = false;
-                    salida.println("¡Gracias por jugar!");
-                }
-            }
-        }
-
-        // ===== CHAT =====
-        private void manejarChat(BufferedReader entrada, PrintWriter salida) throws IOException {
-            Scanner consola = new Scanner(System.in);
-            salida.println("=== CHAT CON EL SERVIDOR ===");
-            salida.println("Escribe 'salir' para terminar.\n");
-
-            Thread recibir = new Thread(() -> {
-                try {
-                    String mensajeCliente;
-                    while ((mensajeCliente = entrada.readLine()) != null) {
-                        if (mensajeCliente.equalsIgnoreCase("salir")) {
-                            System.out.println("⚠ Cliente salió del chat.");
-                            break;
-                        }
-                        System.out.println("[Cliente]: " + mensajeCliente);
+                boolean respuestaValida = false;
+                while (!respuestaValida) {
+                    salida.println("¿Quieres jugar otra vez? (s/n):");
+                    String respuesta = entrada.readLine();
+                    if (respuesta == null) return;
+                    
+                    respuesta = respuesta.trim().toLowerCase();
+                    if (respuesta.equals("s") || respuesta.equals("si")) {
+                        respuestaValida = true;
+                        seguirJugando = true;
+                    } else if (respuesta.equals("n") || respuesta.equals("no")) {
+                        respuestaValida = true;
+                        seguirJugando = false;
+                        salida.println("¡Gracias por jugar!");
+                    } else {
+                        salida.println("⚠ Por favor, responde 's' para sí o 'n' para no.");
                     }
-                } catch (IOException e) {
-                    System.out.println("⚠ Chat terminado.");
-                }
-            });
-            recibir.start();
-
-            String mensajeServidor;
-            while (true) {
-                System.out.print("Servidor: ");
-                mensajeServidor = consola.nextLine();
-                salida.println(mensajeServidor);
-                if (mensajeServidor.equalsIgnoreCase("salir")) {
-                    System.out.println("🚪 Chat cerrado por el servidor.");
-                    break;
                 }
             }
-
-            recibir.interrupt();
         }
     }
 }
