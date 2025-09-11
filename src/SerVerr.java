@@ -3,6 +3,7 @@ import java.io.*;
 import java.net.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -69,6 +70,8 @@ public class SerVerr {
                 salida.println("2. Registrarse");
                 salida.println("3. Salir");
                 salida.println("Seleccione una opcion (1-3):"); 
+                
+                 salida.println("PELIGRO: Si ingresas un comando no deseado el Server se cerrará"); 
                 String opcion = entrada.readLine();
                 if (opcion == null) return;
 
@@ -99,50 +102,43 @@ public class SerVerr {
             }
         }
 
-        private void manejarLogin(BufferedReader entrada, PrintWriter salida) throws IOException {
-            salida.println("=== LOGIN ===");
-            salida.println("Ingrese usuario:");
-            String username = entrada.readLine();
-            if (username == null) return;
+     private void manejarLogin(BufferedReader entrada, PrintWriter salida) throws IOException {
+    salida.println("=== LOGIN ===");
+    salida.println("Ingrese usuario:");
+    String username = entrada.readLine();
+    if (username == null) return;
+    salida.println("Ingrese password:");
+    String password = entrada.readLine();
+    if (password == null) return;
 
-            salida.println("Ingrese password:");
-            String password = entrada.readLine();
-            if (password == null) return;
+    if (verificarLogin(username.trim(), hashPassword(password))) {
+        salida.println("¡Bienvenido " + username.trim() + "!");
+        System.out.println("Usuario " + username.trim() + " inicio sesion correctamente");
 
-            if (verificarLogin(username.trim(), hashPassword(password))) {
-                salida.println("¡Bienvenido " + username.trim() + "!");
-                System.out.println("Usuario " + username.trim() + " inicio sesion correctamente");
-                if (verificarLogin(username.trim(), hashPassword(password))) {
-    salida.println("¡Bienvenido " + username.trim() + "!");
-    System.out.println("Usuario " + username.trim() + " inicio sesion correctamente");
+        // Menú post login
+        salida.println("¿Qué deseas hacer?");
+        salida.println("1. Jugar 'Adivina el número'");
+        salida.println("2. Chatear con el servidor");
+        salida.println("Elige una opción (1-2):");
+        String opcionPostLogin = entrada.readLine();
+        if (opcionPostLogin == null) return;
 
-    salida.println("¿Qué deseas hacer?");
-    salida.println("1. Jugar 'Adivina el número'");
-    salida.println("2. Chatear con el servidor");
-    salida.println("Elige una opción (1-2):");
-
-    String opcionPostLogin = entrada.readLine();
-    if (opcionPostLogin == null) return;
-
-    switch (opcionPostLogin.trim()) {
-        case "1":
-            juegoAdivinaNumero(entrada, salida);
-            break;
-        case "2":
-            chatConServidor(entrada, salida);
-            break;
-        default:
-            salida.println("Opción no válida. Cerrando sesión...");
-            break;
+        switch (opcionPostLogin.trim()) {
+            case "1":
+                juegoAdivinaNumero(entrada, salida);
+                break;
+            case "2":
+                manejarChat(entrada, salida); // ahora funciona
+                break;
+            default:
+                salida.println("Opción no válida. Cerrando sesión...");
+                break;
+        }
+    } else {
+        salida.println("Usuario o password incorrectos");
+        System.out.println("Intento de login fallido para: " + username.trim());
     }
 }
-                
-            } else {
-                salida.println("Usuario o password incorrectos");
-                System.out.println("Intento de login fallido para: " + username.trim());
-            }
-        }
-        
         
         
         private void manejarRegistro(BufferedReader entrada, PrintWriter salida) throws IOException {
@@ -256,33 +252,48 @@ public class SerVerr {
                 throw new RuntimeException("Error creando hash", e);
             }
         }
-        
-        private void chatConServidor(BufferedReader entrada, PrintWriter salida) throws IOException {
-    salida.println("=== MODO CHAT ===");
-    salida.println("Escribe 'salir' para terminar la conversación.");
 
-    try (BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
-        String mensajeCliente, mensajeServidor;
+   private void manejarChat(BufferedReader entrada, PrintWriter salida) throws IOException {
+    Scanner consola = new Scanner(System.in);
+    System.out.println("\n=== CHAT CON EL CLIENTE ===");
+    System.out.println("Escribe 'salir' para terminar.\n");
 
-        while ((mensajeCliente = entrada.readLine()) != null) {
-            if (mensajeCliente.equalsIgnoreCase("salir")) {
-                salida.println("El cliente salió del chat.");
-                break;
+    // Hilo para recibir mensajes del cliente
+    Thread recibir = new Thread(() -> {
+        try {
+            String mensajeCliente;
+            while ((mensajeCliente = entrada.readLine()) != null) {
+                if (mensajeCliente.equalsIgnoreCase("salir")) {
+                    System.out.println("⚠ Cliente salió del chat.");
+                    break;
+                }
+                System.out.println("[Cliente]: " + mensajeCliente);
             }
-            System.out.println("Cliente dice: " + mensajeCliente);
+        } catch (IOException e) {
+            System.out.println("⚠ Chat terminado.");
+        }
+    });
+    recibir.start();
 
-            // Leer mensaje desde la consola del servidor
-            System.out.print("Servidor: ");
-            mensajeServidor = consola.readLine();
-            if (mensajeServidor == null || mensajeServidor.equalsIgnoreCase("salir")) {
-                salida.println("El servidor salió del chat.");
-                break;
-            }
-            salida.println("Servidor: " + mensajeServidor);
+    // Hilo principal para enviar mensajes desde el servidor
+    String mensajeServidor;
+    while (true) {
+        System.out.print("Servidor: ");
+        mensajeServidor = consola.nextLine();
+        salida.println(mensajeServidor);
+        if (mensajeServidor.equalsIgnoreCase("salir")) {
+            System.out.println("🚪 Chat cerrado por el servidor.");
+            break;
         }
     }
-}
 
+    recibir.interrupt();
+}
+        
+        
+        
+        
+        
       
         private void juegoAdivinaNumero(BufferedReader entrada, PrintWriter salida) throws IOException {
     boolean seguirJugando = true;
