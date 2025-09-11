@@ -85,7 +85,22 @@ public class SerVerr {
                 }
             }
         }
-        
+         private void manejarLogin(BufferedReader entrada, PrintWriter salida) throws IOException {
+            salida.println("=== LOGIN ===");
+            salida.println("Ingrese usuario:");
+            String username = entrada.readLine();
+
+            salida.println("Ingrese password:");
+            String password = entrada.readLine();
+
+            if (verificarLogin(username, hashPassword(password))) {
+                salida.println("¡Bienvenido " + username + "!");
+                System.out.println("Usuario " + username + " inicio sesion correctamente");
+            } else {
+                salida.println("Usuario o password incorrectos");
+                System.out.println("Intento de login fallido para: " + username);
+            }
+        }
 private synchronized boolean guardarUsuario(String usuario, String password) {
     try (FileWriter fw = new FileWriter("usuarios.txt", true);
          BufferedWriter bw = new BufferedWriter(fw);
