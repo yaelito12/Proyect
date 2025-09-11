@@ -78,6 +78,19 @@ private synchronized boolean guardarUsuario(String usuario, String password) {
         System.err.println("Error guardando usuario: " + e.getMessage());
         return false;
     }
+}private boolean usuarioExiste(String usuario) {
+    try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
+        String linea;
+        while ((linea = br.readLine()) != null) {
+            String[] partes = linea.split(":");
+            if (partes[0].equals(usuario)) {
+                return true;
+            }
+        }
+    } catch (IOException e) {
+        return false;
+    }
+    return false;
 }
     }
 }
