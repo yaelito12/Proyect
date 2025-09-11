@@ -42,6 +42,14 @@ public class SerVerr {
             try (BufferedReader entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  PrintWriter salida = new PrintWriter(socket.getOutputStream(), true)) {
                 
+                
+                String clienteIP = socket.getInetAddress().toString();
+                System.out.println("Hilo iniciado para cliente: " + clienteIP);
+                
+                
+                salida.println("¡Hola! Estas conectado al servidor (Hilo: " + Thread.currentThread().getName() + ")");
+                salida.println("Escribe algo:");
+                
        
             } catch (IOException e) {
                 
