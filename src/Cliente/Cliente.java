@@ -28,9 +28,8 @@ public class Cliente {
             String usuario = teclado.readLine();
             salida.println(usuario);
            
-            String respuesta = teclado.readLine();
-            salida.println(respuesta);
-            
+         String respuesta = entrada.readLine();
+            System.out.println(respuesta);
             
             String confirmacion = entrada.readLine();
             System.out.println(confirmacion);
