@@ -305,34 +305,41 @@ public class SerVerr {
                 salida.println("Error registrando usuario");
             }
         }
+private void mostrarBandeja(BufferedReader entrada) throws IOException {
+    ClienteInfo c = clientes.get(usuario);
+    boolean enBandeja = true;
 
-        private void mostrarBandeja(BufferedReader entrada) throws IOException {
-            ClienteInfo c = clientes.get(usuario);
-            boolean enBandeja = true;
+    while (enBandeja) {
+        salida.println("╔════════════════════════════════╗");
+        salida.println("║        BANDEJA DE ENTRADA      ║");
+        salida.println("╚════════════════════════════════╝");
 
-            while (enBandeja) {
-                salida.println("=== BANDEJA DE ENTRADA ===");
-                if (c.bandeja.isEmpty()) {
-                    salida.println("No hay mensajes nuevos.");
-                } else {
-                    salida.println("Mensajes:");
-                    for (int i = 0; i < c.bandeja.size(); i++) {
-                        salida.println((i + 1) + ". " + c.bandeja.get(i));
-                    }
-                    c.bandeja.clear();
-                }
-
-                salida.println("Escribe 'salir' para volver al menú principal");
-                String comando = entrada.readLine();
-                if (comando == null) break;
-
-                if (comando.trim().equalsIgnoreCase("salir")) {
-                    enBandeja = false;
-                } else {
-                    salida.println("Comando no reconocido. Solo puedes escribir 'salir'.");
-                }
+        if (c.bandeja.isEmpty()) {
+            salida.println("📭 No hay mensajes nuevos.");
+        } else {
+            salida.println("📬 Mensajes:");
+            for (int i = 0; i < c.bandeja.size(); i++) {
+                salida.println((i + 1) + ". " + c.bandeja.get(i));
             }
         }
+
+        salida.println("\nOpciones:");
+        salida.println(" - escribir 'actualizar' para refrescar la bandeja");
+        salida.println(" - escribir 'salir' para volver al menú principal");
+
+        String comando = entrada.readLine();
+        if (comando == null) break;
+
+        if (comando.trim().equalsIgnoreCase("salir")) {
+            enBandeja = false;
+        } else if (comando.trim().equalsIgnoreCase("actualizar")) {
+            // simplemente vuelve a mostrar la bandeja en el siguiente ciclo
+            salida.println(" Bandeja actualizada...");
+        } else {
+            salida.println(" Comando no reconocido.");
+        }
+    }
+}
 
         private void juegoAdivinaNumero(BufferedReader entrada) throws IOException {
             boolean seguirJugando = true;
