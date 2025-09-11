@@ -101,6 +101,53 @@ public class SerVerr {
                 System.out.println("Intento de login fallido para: " + username);
             }
         }
+         
+         private void manejarRegistro(BufferedReader entrada, PrintWriter salida) throws IOException {
+            salida.println("=== REGISTRO ===");
+            salida.println("Ingrese nuevo usuario:");
+            String username = entrada.readLine();
+
+            if (username == null || username.trim().isEmpty()) {
+                salida.println("El usuario no puede estar vacío");
+                return;
+            }
+
+            if (usuarioExiste(username)) {
+                salida.println("El usuario ya existe");
+                System.out.println("Intento de registro fallido: usuario " + username + " ya existe");
+                return;
+            }
+
+            salida.println("Ingrese password:");
+            String password = entrada.readLine();
+
+            if (password == null || password.length() < 4) {
+                salida.println("La password debe tener al menos 4 caracteres");
+                return;
+            }
+
+            if (password.contains(" ")) {
+                salida.println("La contraseña no puede contener espacios");
+                return;
+            }
+
+            salida.println("Confirme password:");
+            String confirmPassword = entrada.readLine();
+
+            if (!password.equals(confirmPassword)) {
+                salida.println("Las passwords no coinciden");
+                return;
+            }
+
+            if (guardarUsuario(username, hashPassword(password))) {
+                salida.println("Usuario " + username + " registrado correctamente");
+                System.out.println("Usuario " + username + " registrado correctamente");
+            } else {
+                salida.println("Error registrando usuario");
+                System.out.println("Error registrando usuario " + username);
+            }
+        }
+
 private synchronized boolean guardarUsuario(String usuario, String password) {
     try (FileWriter fw = new FileWriter("usuarios.txt", true);
          BufferedWriter bw = new BufferedWriter(fw);
