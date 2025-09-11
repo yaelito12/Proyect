@@ -91,6 +91,19 @@ private synchronized boolean guardarUsuario(String usuario, String password) {
         return false;
     }
     return false;
+}private boolean verificarLogin(String usuario, String password) {
+    try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
+        String linea;
+        while ((linea = br.readLine()) != null) {
+            String[] partes = linea.split(":");
+            if (partes[0].equals(usuario) && partes[1].equals(password)) {
+                return true;
+            }
+        }
+    } catch (IOException e) {
+        return false;
+    }
+    return false;
 }
     }
 }
