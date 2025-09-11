@@ -6,9 +6,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class SerVerr {
+  private static final int PUERTO = 1234;
+    private static ExecutorService pool = Executors.newFixedThreadPool(10); // NUEVO: Pool de hilos
+    
     public static void main(String[] args) {
-    private static final int PUERTO = 1234;
-    private static ExecutorService pool = Executors.newFixedThreadPool(10);
+    
         
         try (ServerSocket servidor = new ServerSocket(PUERTO)) {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
