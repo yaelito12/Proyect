@@ -23,9 +23,10 @@ public class Cliente {
             String header = entrada.readLine();
             System.out.println(header);
             
-            String mensajeServidor2 = entrada.readLine();
-            System.out.print(mensajeServidor2 + " ");
-            
+              String solicitudUsuario = entrada.readLine();
+            System.out.print(solicitudUsuario + " ");
+            String usuario = teclado.readLine();
+            salida.println(usuario);
            
             String respuesta = teclado.readLine();
             salida.println(respuesta);
