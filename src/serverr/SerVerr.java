@@ -20,15 +20,28 @@ public class SerVerr {
                 Socket socket = servidor.accept();
                 System.out.println("Cliente conectado desde: " + socket.getInetAddress());
                 
-                // NUEVO: Crear hilo para manejar cada cliente
+              
                 pool.submit(new ManejadorCliente(socket));
             }
 
         } catch (IOException e) {
             System.out.println("Error en el servidor: " + e.getMessage());
         } finally {
-            pool.shutdown(); // NUEVO: Cerrar pool de hilos
+            pool.shutdown(); 
+            
+             static class ManejadorCliente implements Runnable {
+        private Socket socket;
+        
+        public ManejadorCliente(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        }
+        
         }
     }
-    }
-}
+    
+
