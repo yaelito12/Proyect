@@ -1,5 +1,4 @@
 
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -9,9 +8,9 @@ import java.net.Socket;
 public class Cliente {
     private static final String HOST = "localhost";
     private static final int PUERTO = 8080;
-    
+
     public static void main(String[] args) throws IOException {
-        // NUEVO: Header mejorado
+        // Header bonito
         System.out.println("╔═══════════════════════════════════════╗");
         System.out.println("║      CLIENTE DE AUTENTICACION        ║");
         System.out.println("╚═══════════════════════════════════════╝");
@@ -24,8 +23,8 @@ public class Cliente {
             BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in))
         ) {
             System.out.println("✓ Conectado al servidor " + HOST + ":" + PUERTO + "\n");
-            
-            // Leer y mostrar el menú del servidor
+
+            // Leer y mostrar menú inicial del servidor
             String linea;
             while ((linea = entrada.readLine()) != null) {
                 System.out.println(linea);
@@ -33,8 +32,8 @@ public class Cliente {
                     break;
                 }
             }
-            
-            // NUEVO: Validar entrada del usuario
+
+            // Enviar opción inicial
             String opcion = "";
             while (opcion.isEmpty()) {
                 System.out.print("➤ ");
@@ -44,8 +43,8 @@ public class Cliente {
                 }
             }
             salida.println(opcion);
-            
-            // Manejar cada opción
+
+            // Manejar opciones principales
             switch (opcion) {
                 case "1":
                     manejarLogin(entrada, salida, teclado);
@@ -62,97 +61,92 @@ public class Cliente {
                     System.out.println("⚠ " + respuesta);
                     break;
             }
-            
+
         } catch (IOException e) {
             System.err.println("❌ Error de conexión: " + e.getMessage());
             System.err.println("   ¿Está el servidor ejecutándose?");
         }
-        
-        // NUEVO: Mensaje de cierre
+
+        // Mensaje de cierre
         System.out.println("\n╔═══════════════════════════════════════╗");
         System.out.println("║            DESCONECTADO               ║");
         System.out.println("╚═══════════════════════════════════════╝");
     }
-    
 
+    // === LOGIN ===
     private static void manejarLogin(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         // Leer header
         String header = entrada.readLine();
         System.out.println("\n" + header);
-        
+
         // Solicitar usuario
         String solicitarUsuario = entrada.readLine();
         System.out.print("👤 " + solicitarUsuario + " ");
         String username = leerEntradaNoVacia(teclado, "El usuario no puede estar vacío");
         salida.println(username);
-        
+
         // Solicitar password
         String solicitarPassword = entrada.readLine();
         System.out.print("🔑 " + solicitarPassword + " ");
         String password = leerEntradaNoVacia(teclado, "La password no puede estar vacía");
         salida.println(password);
-        
+
         // Leer resultado
         String resultado = entrada.readLine();
         if (resultado.startsWith("¡Bienvenido")) {
             System.out.println("✓ " + resultado);
+
+            // === MENÚ POST LOGIN ===
+            String linea;
+            while ((linea = entrada.readLine()) != null) {
+                System.out.println(linea);
+                if (linea.contains("Elige una opción")) {
+                    break;
+                }
+            }
+
+            System.out.print("➤ ");
+            String opcionPostLogin = leerEntradaNoVacia(teclado, "Entrada no válida");
+            salida.println(opcionPostLogin);
+
+            if (opcionPostLogin.equals("1")) {
+                manejarJuego(entrada, salida, teclado);
+            } else if (opcionPostLogin.equals("2")) {
+                manejarChat(entrada, salida, teclado);
+            }
+
         } else if (resultado.startsWith("ERROR")) {
             System.out.println("❌ " + resultado);
         } else {
             System.out.println("⚠ " + resultado);
         }
     }
-    private static void manejarJuego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-    String linea;
-    while ((linea = entrada.readLine()) != null) {
-        System.out.println(linea);
 
-        // Cuando el servidor pide un número o una respuesta (s/n)
-        if (linea.contains("Ingresa tu número:") || linea.contains("¿Quieres jugar otra vez?")) {
-            System.out.print("➤ ");
-            String respuesta = leerEntradaNoVacia(teclado, "Entrada no válida");
-            salida.println(respuesta);
-        }
-
-        // Si termina el juego
-        if (linea.contains("¡Gracias por jugar!")) {
-            break;
-        }
-    }
-}
-    // NUEVO: Registro con interfaz mejorada
+    // === REGISTRO ===
     private static void manejarRegistro(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        // Leer header
         String header = entrada.readLine();
         System.out.println("\n" + header);
-        
-        // Solicitar nuevo usuario
+
         String solicitarUsuario = entrada.readLine();
         System.out.print("👤 " + solicitarUsuario + " ");
         String username = leerEntradaNoVacia(teclado, "El usuario no puede estar vacío");
         salida.println(username);
-        
-        // Leer respuesta
+
         String respuesta = entrada.readLine();
-        
-        // Si hay error, mostrar y terminar
         if (respuesta.startsWith("ERROR") || respuesta.contains("ya existe")) {
             System.out.println("❌ " + respuesta);
             return;
         }
-        
-        // Continuar con password
+
         System.out.print("🔑 " + respuesta + " ");
         String password = leerEntradaNoVacia(teclado, "La password no puede estar vacía");
         salida.println(password);
-        
-        // Confirmar password
+
         String confirmarPassword = entrada.readLine();
         System.out.print("🔑 " + confirmarPassword + " ");
         String confirmPassword = leerEntradaNoVacia(teclado, "La confirmación no puede estar vacía");
         salida.println(confirmPassword);
-        
-        // Leer resultado final
+
         String resultado = entrada.readLine();
         if (resultado.startsWith("EXITO")) {
             System.out.println("✓ " + resultado);
@@ -162,8 +156,56 @@ public class Cliente {
             System.out.println("⚠ " + resultado);
         }
     }
-    
-    // NUEVO: Método helper para validar entrada
+
+    // === JUEGO ===
+    private static void manejarJuego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        String linea;
+        while ((linea = entrada.readLine()) != null) {
+            System.out.println(linea);
+
+            if (linea.contains("Ingresa tu número:") || linea.contains("¿Quieres jugar otra vez?")) {
+                System.out.print("➤ ");
+                String respuesta = leerEntradaNoVacia(teclado, "Entrada no válida");
+                salida.println(respuesta);
+            }
+
+            if (linea.contains("¡Gracias por jugar!")) {
+                break;
+            }
+        }
+    }
+
+    // === CHAT ===
+   private static void manejarChat(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    System.out.println("\n=== CHAT CON EL SERVIDOR ===");
+    System.out.println("👉 Escribe tus mensajes y presiona ENTER.");
+    System.out.println("👉 Escribe 'salir' para terminar el chat.\n");
+
+    String mensajeCliente, mensajeServidor;
+
+    while (true) {
+        // Cliente escribe
+        System.out.print("Tú: ");
+        mensajeCliente = teclado.readLine();
+        salida.println(mensajeCliente);
+
+        if (mensajeCliente.equalsIgnoreCase("salir")) {
+            System.out.println("🚪 Has salido del chat.");
+            break;
+        }
+
+        // Recibir respuesta del servidor
+        mensajeServidor = entrada.readLine();
+        if (mensajeServidor == null || mensajeServidor.equalsIgnoreCase("salir")) {
+            System.out.println("⚠ El servidor cerró el chat.");
+            break;
+        }
+
+        System.out.println("Servidor: " + mensajeServidor);
+    }
+}
+
+    // === VALIDAR ENTRADA ===
     private static String leerEntradaNoVacia(BufferedReader teclado, String mensajeError) throws IOException {
         String entrada;
         while (true) {
