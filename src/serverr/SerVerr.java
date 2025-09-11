@@ -67,5 +67,17 @@ public class SerVerr {
                 }
             }
         }
+        
+private synchronized boolean guardarUsuario(String usuario, String password) {
+    try (FileWriter fw = new FileWriter("usuarios.txt", true);
+         BufferedWriter bw = new BufferedWriter(fw);
+         PrintWriter pw = new PrintWriter(bw)) {
+        pw.println(usuario + ":" + password);
+        return true;
+    } catch (IOException e) {
+        System.err.println("Error guardando usuario: " + e.getMessage());
+        return false;
+    }
+}
     }
 }
