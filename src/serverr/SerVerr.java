@@ -50,15 +50,20 @@ public class SerVerr {
                 salida.println("¡Hola! Estas conectado al servidor (Hilo: " + Thread.currentThread().getName() + ")");
                 salida.println("Escribe algo:");
                 
+                 String mensaje = entrada.readLine();
+                System.out.println("Cliente " + clienteIP + " escribió: " + mensaje);
+                
+                // Responder al cliente
+                salida.println("Servidor recibió: " + mensaje);
        
             } catch (IOException e) {
-                
+                     System.err.println("Error manejando cliente: " + e.getMessage());
             } finally {
                 try {
                     socket.close();
-                    
+                  System.out.println("Cliente " + socket.getInetAddress() + " desconectado");   
                 } catch (IOException e) {
-                   
+                    System.err.println("Error cerrando socket: " + e.getMessage());
                 }
             }
         }
