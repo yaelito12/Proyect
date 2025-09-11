@@ -117,38 +117,42 @@ public class Cliente {
         System.out.println(entrada.readLine());
     }
 
-    private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        while (true) {
-            String linea;
-            // Leer todo el contenido de la bandeja hasta encontrar el prompt de salida
-            while ((linea = entrada.readLine()) != null) {
-                System.out.println(linea);
-                if (linea.contains("Escribe 'salir'")) {
-                    break;
-                }
+   private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    while (true) {
+        String linea;
+        // Mostrar todo lo que manda el servidor hasta que aparezca el prompt
+        while ((linea = entrada.readLine()) != null) {
+            System.out.println(linea);
+            if (linea.contains("escribir 'salir'")) { // ajusta el texto exacto si hace falta
+                break;
             }
+        }
 
-            System.out.print("➤ ");
-            String comando = teclado.readLine();
-            
-            if (comando == null || comando.trim().isEmpty()) {
-                System.out.println("⚠ Entrada vacía no permitida.");
-                continue;
-            }
-            
-            salida.println(comando);
-            
-            if (comando.trim().equalsIgnoreCase("salir")) {
-                return; // Salir de la bandeja
-            }
-            
-            // Leer respuesta del servidor para comandos no reconocidos
-            String respuesta = entrada.readLine();
-            if (respuesta != null) {
-                System.out.println(respuesta);
+        System.out.print("➤ ");
+        String comando = teclado.readLine();
+
+        if (comando == null || comando.trim().isEmpty()) {
+            System.out.println("⚠ Entrada vacía no permitida.");
+            continue;
+        }
+
+        salida.println(comando);
+
+        if (comando.trim().equalsIgnoreCase("salir")) {
+            // No esperamos más líneas del servidor, solo salimos
+            return;
+        }
+
+        // Esperar la respuesta para otros comandos (ejemplo "actualizar")
+        while ((linea = entrada.readLine()) != null) {
+            System.out.println(linea);
+            // Si el servidor vuelve a mostrar el prompt, rompemos para pedir input
+            if (linea.contains("escribir 'salir'")) {
+                break;
             }
         }
     }
+}
 
     private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         while (true) {
