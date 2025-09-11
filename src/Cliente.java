@@ -8,7 +8,7 @@ import java.net.Socket;
 
 public class Cliente {
     private static final String HOST = "localhost";
-    private static final int PUERTO = 1234;
+    private static final int PUERTO = 8080;
     
     public static void main(String[] args) throws IOException {
         // NUEVO: Header mejorado
@@ -74,7 +74,7 @@ public class Cliente {
         System.out.println("╚═══════════════════════════════════════╝");
     }
     
-    // NUEVO: Login con interfaz mejorada
+
     private static void manejarLogin(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         // Leer header
         String header = entrada.readLine();
@@ -102,7 +102,24 @@ public class Cliente {
             System.out.println("⚠ " + resultado);
         }
     }
-    
+    private static void manejarJuego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    String linea;
+    while ((linea = entrada.readLine()) != null) {
+        System.out.println(linea);
+
+        // Cuando el servidor pide un número o una respuesta (s/n)
+        if (linea.contains("Ingresa tu número:") || linea.contains("¿Quieres jugar otra vez?")) {
+            System.out.print("➤ ");
+            String respuesta = leerEntradaNoVacia(teclado, "Entrada no válida");
+            salida.println(respuesta);
+        }
+
+        // Si termina el juego
+        if (linea.contains("¡Gracias por jugar!")) {
+            break;
+        }
+    }
+}
     // NUEVO: Registro con interfaz mejorada
     private static void manejarRegistro(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         // Leer header
