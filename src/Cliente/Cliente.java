@@ -8,7 +8,7 @@ import java.net.Socket;
 
 public class Cliente {
     public static void main(String[] args) throws IOException {
-  final String HOST = "localhost";
+        final String HOST = "localhost";
         final int PUERTO = 1234;
 
         try (
@@ -17,15 +17,25 @@ public class Cliente {
             PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in))
         ) {
-         
-            String mensajeServidor;
+            System.out.println("Conectado al servidor " + HOST + ":" + PUERTO);
             
-              mensajeServidor = entrada.readLine();
-            System.out.println(mensajeServidor);
-            String opcion = teclado.readLine();
-            salida.println(opcion);
-
+            // NUEVO: Leer mensajes del servidor
+            String mensajeServidor1 = entrada.readLine();
+            System.out.println(mensajeServidor1);
             
+            String mensajeServidor2 = entrada.readLine();
+            System.out.print(mensajeServidor2 + " ");
             
+            // Leer input del usuario y enviarlo
+            String respuesta = teclado.readLine();
+            salida.println(respuesta);
             
-        }}}
+            // NUEVO: Leer confirmación del servidor
+            String confirmacion = entrada.readLine();
+            System.out.println(confirmacion);
+            
+        } catch (IOException e) {
+            System.err.println("Error de conexión: " + e.getMessage());
+        }
+    }
+}
