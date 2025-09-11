@@ -31,11 +31,15 @@ public class Cliente {
          String respuesta = entrada.readLine();
             System.out.println(respuesta);
             
-            String confirmacion = entrada.readLine();
-            System.out.println(confirmacion);
-            
+              if (respuesta.contains("Ingresa password")) {
+                String password = teclado.readLine();
+                salida.println(password);
+                
+                String confirmacion = entrada.readLine();
+                System.out.println(confirmacion);
+              }    
         } catch (IOException e) {
             System.err.println("Error de conexión: " + e.getMessage());
         }
     }
-}
+    }
