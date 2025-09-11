@@ -8,6 +8,7 @@ import java.net.Socket;
 
 public class Cliente {
     public static void main(String[] args) throws IOException {
+  
         final String HOST = "localhost";
         final int PUERTO = 1234;
 
@@ -19,27 +20,94 @@ public class Cliente {
         ) {
             System.out.println("Conectado al servidor " + HOST + ":" + PUERTO);
             
-            
-            String header = entrada.readLine();
-            System.out.println(header);
-            
-              String solicitudUsuario = entrada.readLine();
-            System.out.print(solicitudUsuario + " ");
-            String usuario = teclado.readLine();
-            salida.println(usuario);
            
-         String respuesta = entrada.readLine();
-            System.out.println(respuesta);
+            String linea;
+            while ((linea = entrada.readLine()) != null) {
+                System.out.println(linea);
+                if (linea.contains("Seleccione una opcion")) {
+                    break;
+                }
+            }
             
-              if (respuesta.contains("Ingresa password")) {
-                String password = teclado.readLine();
-                salida.println(password);
-                
-                String confirmacion = entrada.readLine();
-                System.out.println(confirmacion);
-              }    
+            String opcion = teclado.readLine();
+            salida.println(opcion);
+            
+           
+            switch (opcion) {
+                case "1":
+                    manejarLogin(entrada, salida, teclado);
+                    break;
+                case "2":
+                    manejarRegistro(entrada, salida, teclado);
+                    break;
+                case "3":
+                    String despedida = entrada.readLine();
+                    System.out.println(despedida);
+                    break;
+                default:
+                    String respuesta = entrada.readLine();
+                    System.out.println(respuesta);
+                    break;
+            }
+            
         } catch (IOException e) {
             System.err.println("Error de conexión: " + e.getMessage());
         }
     }
+    
+
+    private static void manejarLogin(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+     
+        String header = entrada.readLine();
+        System.out.println(header);
+        
+      
+        String solicitarUsuario = entrada.readLine();
+        System.out.print(solicitarUsuario + " ");
+        String username = teclado.readLine();
+        salida.println(username);
+       
+        String solicitarPassword = entrada.readLine();
+        System.out.print(solicitarPassword + " ");
+        String password = teclado.readLine();
+        salida.println(password);
+        
+     
+        String resultado = entrada.readLine();
+        System.out.println(resultado);
     }
+    
+ 
+    private static void manejarRegistro(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        // Leer header
+        String header = entrada.readLine();
+        System.out.println(header);
+        
+     
+        String solicitarUsuario = entrada.readLine();
+        System.out.print(solicitarUsuario + " ");
+        String username = teclado.readLine();
+        salida.println(username);
+        
+      
+        String respuesta = entrada.readLine();
+        if (respuesta.contains("ya existe")) {
+            System.out.println(respuesta);
+            return;
+        }
+        
+    
+        System.out.print(respuesta + " ");
+        String password = teclado.readLine();
+        salida.println(password);
+        
+     
+        String confirmarPassword = entrada.readLine();
+        System.out.print(confirmarPassword + " ");
+        String confirmPassword = teclado.readLine();
+        salida.println(confirmPassword);
+    
+        String resultado = entrada.readLine();
+        System.out.println(resultado);
+    }
+}
