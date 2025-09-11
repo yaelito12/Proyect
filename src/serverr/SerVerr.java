@@ -2,10 +2,13 @@ package serverr;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class SerVerr {
     public static void main(String[] args) {
-        final int PUERTO = 1234;
+    private static final int PUERTO = 1234;
+    private static ExecutorService pool = Executors.newFixedThreadPool(10);
         
         try (ServerSocket servidor = new ServerSocket(PUERTO)) {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
