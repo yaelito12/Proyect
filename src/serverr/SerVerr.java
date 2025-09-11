@@ -1,3 +1,4 @@
+
 package serverr;
 
 import java.io.*;
@@ -16,7 +17,6 @@ public class SerVerr {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
             System.out.println("Esperando conexiones...");
 
-          
             Thread control = new Thread(() -> {
                 try (BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
                     String comando;
@@ -38,7 +38,6 @@ public class SerVerr {
             });
             control.start();
 
-          
             while (true) {
                 Socket socket = servidor.accept();
                 System.out.println("Cliente conectado desde: " + socket.getInetAddress());
@@ -67,32 +66,27 @@ public class SerVerr {
                 String clienteIP = socket.getInetAddress().toString();
                 System.out.println("Hilo iniciado para cliente: " + clienteIP);
 
-                boolean activo = true;
-                while (activo) {
-                    // Menú de autenticación
-                    salida.println("=== MENU ===");
-                    salida.println("1. Login");
-                    salida.println("2. Registro");
-                    salida.println("3. Salir");
-                    salida.println("Elija una opción:");
-                    String opcion = entrada.readLine();
+                salida.println("=== SISTEMA DE AUTENTICACION ===");
+                salida.println("1. Iniciar sesion");
+                salida.println("2. Registrarse");
+                salida.println("3. Salir");
+                salida.println("Seleccione una opcion (1-3):"); 
+                String opcion = entrada.readLine();
+                if (opcion == null) return;
 
-                    if (opcion == null) break;
-
-                    switch (opcion) {
-                        case "1":
-                            manejarLogin(entrada, salida);
-                            break;
-                        case "2":
-                            manejarRegistro(entrada, salida);
-                            break;
-                        case "3":
-                            salida.println("Desconectando...");
-                            activo = false;
-                            break;
-                        default:
-                            salida.println("Opción inválida");
-                    }
+                switch (opcion.trim()) {
+                    case "1":
+                        manejarLogin(entrada, salida);
+                        break;
+                    case "2":
+                        manejarRegistro(entrada, salida);
+                        break;
+                    case "3":
+                        salida.println("¡Hasta luego!");
+                        break;
+                    default:
+                        salida.println("Opcion no valida");
+                        break;
                 }
 
             } catch (IOException e) {
@@ -107,32 +101,36 @@ public class SerVerr {
             }
         }
 
-    
         private void manejarLogin(BufferedReader entrada, PrintWriter salida) throws IOException {
             salida.println("=== LOGIN ===");
             salida.println("Ingrese usuario:");
             String username = entrada.readLine();
+            if (username == null) return;
 
             salida.println("Ingrese password:");
             String password = entrada.readLine();
+            if (password == null) return;
 
-            if (verificarLogin(username, hashPassword(password))) {
-                salida.println("¡Bienvenido " + username + "!");
-                System.out.println("Usuario " + username + " inicio sesion correctamente");
+            if (verificarLogin(username.trim(), hashPassword(password))) {
+                salida.println("¡Bienvenido " + username.trim() + "!");
+                System.out.println("Usuario " + username.trim() + " inicio sesion correctamente");
             } else {
                 salida.println("Usuario o password incorrectos");
-                System.out.println("Intento de login fallido para: " + username);
+                System.out.println("Intento de login fallido para: " + username.trim());
             }
         }
 
-        // === REGISTRO ===
         private void manejarRegistro(BufferedReader entrada, PrintWriter salida) throws IOException {
             salida.println("=== REGISTRO ===");
             salida.println("Ingrese nuevo usuario:");
             String username = entrada.readLine();
+            if (username == null) return;
 
-            if (username == null || username.trim().isEmpty()) {
-                salida.println("El usuario no puede estar vacío");
+            username = username.trim();
+
+        
+            if (username.isEmpty()) {
+                salida.println("ERROR: El usuario no puede estar vacío");
                 return;
             }
 
@@ -142,36 +140,42 @@ public class SerVerr {
                 return;
             }
 
+           
             salida.println("Ingrese password:");
             String password = entrada.readLine();
+            if (password == null) return;
 
-            if (password == null || password.length() < 4) {
-                salida.println("La password debe tener al menos 4 caracteres");
+           
+            if (password.length() < 4) {
+                salida.println("ERROR: La password debe tener al menos 4 caracteres");
                 return;
             }
 
             if (password.contains(" ")) {
-                salida.println("La contraseña no puede contener espacios");
+                salida.println("ERROR: La contraseña no puede contener espacios");
                 return;
             }
 
             salida.println("Confirme password:");
             String confirmPassword = entrada.readLine();
+            if (confirmPassword == null) return;
 
             if (!password.equals(confirmPassword)) {
-                salida.println("Las passwords no coinciden");
+                salida.println("ERROR: Las passwords no coinciden");
                 return;
             }
 
+       
             if (guardarUsuario(username, hashPassword(password))) {
-                salida.println("Usuario " + username + " registrado correctamente");
+                salida.println("EXITO: Usuario " + username + " registrado correctamente");
                 System.out.println("Usuario " + username + " registrado correctamente");
             } else {
-                salida.println("Error registrando usuario");
+                salida.println("ERROR: Error registrando usuario");
                 System.out.println("Error registrando usuario " + username);
             }
         }
 
+    
         private synchronized boolean guardarUsuario(String usuario, String password) {
             try (FileWriter fw = new FileWriter("usuarios.txt", true);
                  BufferedWriter bw = new BufferedWriter(fw);
@@ -188,12 +192,13 @@ public class SerVerr {
             try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
                 String linea;
                 while ((linea = br.readLine()) != null) {
-                    String[] partes = linea.split(":");
-                    if (partes[0].equals(usuario)) {
+                    String[] partes = linea.split(":", 2);
+                    if (partes.length >= 1 && partes[0].equals(usuario)) {
                         return true;
                     }
                 }
             } catch (IOException e) {
+              
                 return false;
             }
             return false;
@@ -203,7 +208,7 @@ public class SerVerr {
             try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
                 String linea;
                 while ((linea = br.readLine()) != null) {
-                    String[] partes = linea.split(":");
+                    String[] partes = linea.split(":", 2); // CORREGIDO: límite 2
                     if (partes.length == 2 && partes[0].equals(usuario) && partes[1].equals(passwordHash)) {
                         return true;
                     }
@@ -214,7 +219,6 @@ public class SerVerr {
             return false;
         }
 
-    
         private String hashPassword(String password) {
             try {
                 MessageDigest md = MessageDigest.getInstance("SHA-256");
