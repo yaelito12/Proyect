@@ -138,19 +138,20 @@ public class Cliente {
 
         salida.println(comando);
 
-        if (comando.trim().equalsIgnoreCase("salir")) {
-            // No esperamos más líneas del servidor, solo salimos
-            return;
-        }
+    if (comando.trim().equalsIgnoreCase("salir")) {
+    return;
+}
 
-        // Esperar la respuesta para otros comandos (ejemplo "actualizar")
-        while ((linea = entrada.readLine()) != null) {
-            System.out.println(linea);
-            // Si el servidor vuelve a mostrar el prompt, rompemos para pedir input
-            if (linea.contains("escribir 'salir'")) {
-                break;
-            }
-        }
+
+while ((linea = entrada.readLine()) != null) {
+    System.out.println(linea);
+
+   
+    if (linea.contains("escribir 'salir'") || linea.contains("Opciones:")) {
+        break;
+    }
+}
+
     }
 }
 
