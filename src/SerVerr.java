@@ -18,6 +18,13 @@ public class SerVerr {
         } catch (IOException e) {
             System.err.println("Error guardando mensaje para " + usuario + ": " + e.getMessage());
         }
+        
+        // Notificar al usuario si está conectado
+        ClienteInfo cliente = clientes.get(usuario);
+        if (cliente != null) {
+            cliente.salida.println("🔔 NUEVO MENSAJE: " + mensaje);
+            cliente.salida.println("(Escribe 'menu' para volver al menú o continúa con lo que estabas haciendo)");
+        }
     }
 
     private static List<String> cargarMensajes(String usuario) {
@@ -102,8 +109,13 @@ public class SerVerr {
 
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            System.out.print("Ingrese el número del cliente a expulsar: ");
+            System.out.print("Ingrese el número del cliente a expulsar (0 para cancelar): ");
             String entrada = reader.readLine();
+
+            if (entrada == null || entrada.trim().equals("0")) {
+                System.out.println("Operación cancelada.");
+                return;
+            }
 
             int index = Integer.parseInt(entrada.trim()) - 1;
 
@@ -112,10 +124,17 @@ public class SerVerr {
                 ClienteInfo cliente = clientes.get(usuario);
 
                 if (cliente != null) {
-                    cliente.salida.println("⛔ Has sido expulsado por el servidor.");
-                    cliente.socket.close(); 
-                    clientes.remove(usuario); 
-                    System.out.println("Cliente '" + usuario + "' expulsado.");
+                    try {
+                        cliente.salida.println(" Has sido expulsado por el servidor.");
+                        cliente.salida.println("DISCONNECT"); // Señal especial para desconexión
+                        Thread.sleep(500); // Dar tiempo para enviar el mensaje
+                        cliente.socket.close(); 
+                        clientes.remove(usuario); 
+                        System.out.println("Cliente '" + usuario + "' expulsado exitosamente.");
+                    } catch (Exception e) {
+                        System.out.println("Error al expulsar cliente, pero fue removido de la lista: " + e.getMessage());
+                        clientes.remove(usuario);
+                    }
                 } else {
                     System.out.println("No se encontró al cliente.");
                 }
@@ -123,6 +142,8 @@ public class SerVerr {
                 System.out.println("Índice fuera de rango.");
             }
 
+        } catch (NumberFormatException e) {
+            System.out.println("Por favor ingrese un número válido.");
         } catch (Exception e) {
             System.out.println("Error al expulsar cliente: " + e.getMessage());
         }
@@ -440,11 +461,12 @@ public class SerVerr {
                 salida.println(" - escribir 'actualizar' para refrescar la bandeja");
                 salida.println(" - escribir 'eliminar <número>' para borrar un mensaje");
                 salida.println(" - escribir 'salir' para volver al menú principal");
+                salida.println(" - escribir 'menu' para ir al menú principal");
 
                 String comando = entrada.readLine();
                 if (comando == null) break;
 
-                if (comando.trim().equalsIgnoreCase("salir")) {
+                if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
                     enBandeja = false;
                 } else if (comando.trim().equalsIgnoreCase("actualizar")) {
                     salida.println("Bandeja actualizada...");
@@ -528,11 +550,17 @@ public class SerVerr {
                 salida.println("=== ADIVINA EL NÚMERO ===");
                 salida.println("Adivina el número entre 1 y 10");
                 salida.println("Tienes " + intentos + " intentos");
+                salida.println("(Puedes escribir 'menu' para volver al menú principal)");
 
                 while (intentos > 0 && !acertado) {
                     salida.println("Ingresa tu número:");
                     String resp = entrada.readLine();
                     if (resp == null) return;
+
+                    if (resp.trim().equalsIgnoreCase("menu")) {
+                        salida.println("Volviendo al menú principal...");
+                        return;
+                    }
 
                     try {
                         int numero = Integer.parseInt(resp.trim());
@@ -564,10 +592,11 @@ public class SerVerr {
                     salida.println("Perdiste. El número era: " + numeroSecreto);
                 }
 
-                salida.println("¿Quieres jugar otra vez? (s/n):");
+                salida.println("¿Quieres jugar otra vez? (s/n) o 'menu' para volver:");
                 String respuesta = entrada.readLine();
 
-                if (respuesta == null || respuesta.trim().equalsIgnoreCase("n")) {
+                if (respuesta == null || respuesta.trim().equalsIgnoreCase("n") || 
+                    respuesta.trim().equalsIgnoreCase("menu")) {
                     seguirJugando = false;
                 }
             }
