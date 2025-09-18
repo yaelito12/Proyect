@@ -351,7 +351,8 @@ guardarMensaje(nombreUsuario.trim(), "[ADMIN]: " + mensaje.trim());
             salida.println("=== MENU PRINCIPAL ===");
             salida.println("1. Bandeja de entrada");
             salida.println("2. Jugar 'Adivina número'");
-            salida.println("3. Cerrar sesión");
+              salida.println("3. Enviar mensaje a otro usuario");
+            salida.println("4. Cerrar sesión");
             salida.println("Seleccione opción (1-3):");
         }
 
@@ -401,8 +402,8 @@ private void registro(BufferedReader entrada) throws IOException {
         salida.println("Debe tener al menos 6 caracteres e incluir letras y números.");
         return;
     }
-
-    if (guardarUsuario(u, hashPassword(p))) {
+ 
+   if (guardarUsuario(u, hashPassword(p))) {
         
         File archivoMensajes = new File("mensajes/" + u + ".txt");
         if (archivoMensajes.exists()) {
