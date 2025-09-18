@@ -9,20 +9,20 @@ public class SerVerr {
     private static final int PUERTO = 8080;
     private static ExecutorService pool = Executors.newFixedThreadPool(10);
     private static Map<String, ClienteInfo> clientes = new ConcurrentHashMap<>();
- 
+    
     private static void guardarMensaje(String usuario, String mensaje) {
         File archivo = new File("mensajes/" + usuario + ".txt");
-        archivo.getParentFile().mkdirs(); // Crear carpeta si no existe
+        archivo.getParentFile().mkdirs(); 
         try (PrintWriter pw = new PrintWriter(new FileWriter(archivo, true))) {
             pw.println(mensaje);
         } catch (IOException e) {
             System.err.println("Error guardando mensaje para " + usuario + ": " + e.getMessage());
         }
         
-        // Notificar al usuario si está conectado
+       
         ClienteInfo cliente = clientes.get(usuario);
         if (cliente != null) {
-            cliente.salida.println("🔔 NUEVO MENSAJE: " + mensaje);
+            cliente.salida.println("? NUEVO MENSAJE: " + mensaje);
             cliente.salida.println("(Escribe 'menu' para volver al menú o continúa con lo que estabas haciendo)");
         }
     }
@@ -51,7 +51,7 @@ public class SerVerr {
 
         if (index < 0 || index >= mensajes.size()) return false;
 
-        mensajes.remove(index);  // Elimina el mensaje
+        mensajes.remove(index);  
 
         try (PrintWriter pw = new PrintWriter(new FileWriter(archivo))) {
             for (String msg : mensajes) {
@@ -63,6 +63,77 @@ public class SerVerr {
         }
     }
 
+    
+    private static boolean eliminarUsuarioCompleto(String usuario) {
+        try {
+           
+            if (!eliminarUsuarioDelArchivo(usuario)) {
+                System.err.println("Error eliminando usuario del archivo de usuarios");
+                return false;
+            }
+
+           
+            File archivoMensajes = new File("mensajes/" + usuario + ".txt");
+            if (archivoMensajes.exists()) {
+                if (archivoMensajes.delete()) {
+                    System.out.println("Archivo de mensajes eliminado para: " + usuario);
+                } else {
+                    System.err.println("No se pudo eliminar el archivo de mensajes de: " + usuario);
+                }
+            }
+
+            System.out.println("Usuario " + usuario + " eliminado completamente del sistema");
+            System.out.println("El usuario puede registrarse nuevamente con el mismo nombre");
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("Error eliminando usuario " + usuario + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+   
+    private static boolean eliminarUsuarioDelArchivo(String usuarioAEliminar) {
+        File archivo = new File("usuarios.txt");
+        File archivoTemp = new File("usuarios_temp.txt");
+
+        if (!archivo.exists()) {
+            return true; 
+        }
+
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo));
+             PrintWriter pw = new PrintWriter(new FileWriter(archivoTemp))) {
+
+            String linea;
+            boolean encontrado = false;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(":");
+                if (partes.length > 0 && partes[0].equals(usuarioAEliminar)) {
+                    encontrado = true;
+                  
+                    continue;
+                }
+                pw.println(linea); 
+            }
+
+            pw.close();
+            br.close();
+
+            
+            if (archivo.delete() && archivoTemp.renameTo(archivo)) {
+                return encontrado;
+            } else {
+                System.err.println("Error reemplazando el archivo de usuarios");
+                archivoTemp.delete(); 
+                return false;
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error procesando archivo de usuarios: " + e.getMessage());
+            return false;
+        }
+    }
+
     public static void main(String[] args) {
         try (ServerSocket servidor = new ServerSocket(PUERTO);
              BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
@@ -70,7 +141,7 @@ public class SerVerr {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
             System.out.println("Escribe 'ayuda' para ver los comandos.");
 
-            // Hilo para comandos del servidor
+           
             new Thread(() -> {
                 try {
                     String comando;
@@ -82,7 +153,6 @@ public class SerVerr {
                 }
             }).start();
 
-            // Bucle principal para aceptar clientes
             while (true) {
                 Socket socket = servidor.accept();
                 System.out.println("Nuevo cliente conectado: " + socket.getInetAddress());
@@ -125,15 +195,31 @@ public class SerVerr {
 
                 if (cliente != null) {
                     try {
-                        cliente.salida.println(" Has sido expulsado por el servidor.");
+                      
+                        cliente.salida.println(" Has sido expulsado del servidor.");
+                        cliente.salida.println("Tu cuenta ha sido eliminada del sistema.");
+                        cliente.salida.println("Puedes registrarte nuevamente si lo deseas.");
                         cliente.salida.println("DISCONNECT"); // Señal especial para desconexión
-                        Thread.sleep(500); // Dar tiempo para enviar el mensaje
-                        cliente.socket.close(); 
-                        clientes.remove(usuario); 
-                        System.out.println("Cliente '" + usuario + "' expulsado exitosamente.");
-                    } catch (Exception e) {
-                        System.out.println("Error al expulsar cliente, pero fue removido de la lista: " + e.getMessage());
+                        Thread.sleep(500); 
+
+                        
+                        cliente.socket.close();
+
+                       
                         clientes.remove(usuario);
+
+                       
+                        if (eliminarUsuarioCompleto(usuario)) {
+                            System.out.println("✅ Cliente '" + usuario + "' expulsado y eliminado del sistema.");
+                            System.out.println("Puede registrarse nuevamente con el mismo nombre.");
+                        } else {
+                            System.out.println("⚠️ Cliente '" + usuario + "' expulsado pero hubo errores eliminando sus datos.");
+                        }
+
+                    } catch (Exception e) {
+                        System.out.println("Error al expulsar cliente, intentando eliminación de datos: " + e.getMessage());
+                        clientes.remove(usuario);
+                        eliminarUsuarioCompleto(usuario);
                     }
                 } else {
                     System.out.println("No se encontró al cliente.");
@@ -148,6 +234,10 @@ public class SerVerr {
             System.out.println("Error al expulsar cliente: " + e.getMessage());
         }
     }
+  private static void rehabilitarUsuario() {
+        System.out.println("Esta funcionalidad no está disponible.");
+        System.out.println("Los usuarios expulsados pueden registrarse nuevamente automáticamente.");
+    }
   
     private static void procesarComando(String comando) {
         switch (comando.toLowerCase()) {
@@ -158,7 +248,7 @@ public class SerVerr {
                 System.out.println("clientes  - Ver clientes conectados");
                 System.out.println("usuarios  - Ver usuarios registrados");
                 System.out.println("mensaje   - Enviar mensaje a un cliente");
-                System.out.println("expulsar  - Desconectar a un cliente conectado");
+                System.out.println("expulsar  - Expulsar y eliminar a un cliente (puede re-registrarse)");
                 System.out.println("parar     - Cerrar servidor\n");
                 break;
 
@@ -214,12 +304,21 @@ public class SerVerr {
                 System.out.println();
                 break;
 
+            case "expulsados":
+                System.out.println("Comando no disponible.");
+                System.out.println("Los usuarios expulsados pueden registrarse nuevamente automáticamente.");
+                break;
+
             case "mensaje":
                 enviarMensajeACliente();
                 break;
                
             case "expulsar":
                 expulsarCliente();
+                break;
+
+            case "rehabilitar":
+                rehabilitarUsuario();
                 break;
         
             default:
@@ -424,7 +523,7 @@ public class SerVerr {
             }
  
             if (guardarUsuario(u, hashPassword(p))) {
-                // Limpiar mensajes anteriores si existen
+             
                 File archivoMensajes = new File("mensajes/" + u + ".txt");
                 if (archivoMensajes.exists()) {
                     archivoMensajes.delete();
@@ -533,7 +632,7 @@ public class SerVerr {
 
             String mensajeFinal = "[" + usuario + "]: " + mensaje.trim();
 
-            // Guardar el mensaje en archivo del destinatario
+           
             guardarMensaje(destino, mensajeFinal);
 
             salida.println("✅ Mensaje enviado a " + destino);
