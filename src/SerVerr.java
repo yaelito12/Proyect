@@ -155,10 +155,16 @@ private static boolean eliminarMensaje(String usuario, int index) {
             case "mensaje":
                 enviarMensajeACliente();
                 break;
-
+                   
+                
+                
+              
             default:
                 System.out.println("Comando no reconocido. Escribe 'ayuda'");
-        }
+        }  case "expulsar":
+    expulsarCliente();
+    break;
+    
     }
 
     private static void enviarMensajeACliente() {
