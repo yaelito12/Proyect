@@ -12,173 +12,223 @@ public class Cliente {
              BufferedReader teclado = new BufferedReader(new InputStreamReader(System.in))) {
 
             System.out.println("🔗 Conectado al servidor");
-            
+
             boolean conectado = true;
             boolean logueado = false;
-            
+
             while (conectado) {
-                // Leer menú del servidor
                 String linea;
                 StringBuilder menu = new StringBuilder();
+
+                // Leer el menú completo
                 while ((linea = entrada.readLine()) != null) {
                     menu.append(linea).append("\n");
-                    if (linea.contains("Seleccione opción")) break;
+                    if (linea.toLowerCase().contains("seleccione opción")) break;
                 }
-                System.out.print(menu.toString());
 
+                System.out.print(menu.toString());
                 System.out.print("➤ ");
                 String opcion = teclado.readLine();
+                if (opcion == null) break;
+                
                 salida.println(opcion);
 
                 if (!logueado) {
-                    // Menú de autenticación
                     switch (opcion.trim()) {
-                        case "1": 
+                        case "1":
                             if (login(entrada, salida, teclado)) {
                                 logueado = true;
                             }
                             break;
-                        case "2": 
-                            registro(entrada, salida, teclado); 
+                        case "2":
+                            registro(entrada, salida, teclado);
                             break;
-                        case "3": 
+                        case "3":
+                            String despedida = entrada.readLine();
+                            System.out.println(despedida);
                             System.out.println("👋 Desconectando...");
-                            conectado = false; 
+                            conectado = false;
                             break;
                         default:
-                            // Leer respuesta del servidor para opción inválida
-                            System.out.println(entrada.readLine());
+                            String error = entrada.readLine();
+                            System.out.println(error);
                     }
                 } else {
-                    // Menú post-login
                     switch (opcion.trim()) {
-                        case "1": 
-                            bandeja(entrada, salida, teclado); 
+                        case "1":
+                            bandeja(entrada, salida, teclado);
                             break;
-                        case "2": 
-                            juego(entrada, salida, teclado); 
+                        case "2":
+                            juego(entrada, salida, teclado);
                             break;
-                        case "3": 
-                            // Leer mensaje de cierre de sesión
-                            System.out.println(entrada.readLine());
-                            logueado = false; 
+                        case "3":
+                            enviarMensaje(entrada, salida, teclado);
+                            break;
+                        case "4":
+                            String sesionCerrada = entrada.readLine(); // "Cerrando sesión..."
+                            System.out.println(sesionCerrada);
+                            logueado = false;
                             break;
                         default:
-                            // Leer respuesta del servidor para opción inválida
-                            System.out.println(entrada.readLine());
+                            String error = entrada.readLine();
+                            System.out.println(error);
                     }
                 }
             }
 
-        } catch (IOException e) { 
-            System.err.println("❌ Error de conexión: " + e.getMessage()); 
+        } catch (IOException e) {
+            System.err.println("❌ Error de conexión: " + e.getMessage());
         }
     }
 
     private static boolean login(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        // Leer prompt de usuario
-        System.out.println(entrada.readLine());
+        // Leer "Ingrese usuario:"
+        String prompt = entrada.readLine();
+        System.out.println(prompt);
         System.out.print("Usuario: ");
-        salida.println(teclado.readLine());
-        
-        // Leer prompt de contraseña
-        System.out.println(entrada.readLine());
-        System.out.print("Contraseña: ");
-        salida.println(teclado.readLine());
+        String usuario = teclado.readLine();
+        salida.println(usuario);
 
-        // Leer resultado del login
-        String resultado = entrada.readLine();
-        System.out.println(resultado);
-        
-        // Retornar true si el login fue exitoso
-        return resultado.contains("Bienvenido");
+        // Leer "Ingrese contraseña:"
+        prompt = entrada.readLine();
+        System.out.println(prompt);
+        System.out.print("Contraseña: ");
+        String password = teclado.readLine();
+        salida.println(password);
+
+        // Leer respuesta del servidor
+        String respuesta = entrada.readLine();
+        System.out.println(respuesta);
+        return respuesta.contains("Bienvenido");
     }
 
     private static void registro(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        // Leer prompt de usuario
-        System.out.println(entrada.readLine());
+        // Leer "Ingrese nuevo usuario:"
+        String prompt = entrada.readLine();
+        System.out.println(prompt);
         System.out.print("Usuario: ");
-        salida.println(teclado.readLine());
-        
-        // Leer respuesta (puede ser que ya existe)
+        String usuario = teclado.readLine();
+        salida.println(usuario);
+
+        // Leer primera respuesta (puede ser error de usuario existente)
         String respuesta = entrada.readLine();
         System.out.println(respuesta);
-        
-        if (respuesta.contains("ya existe")) {
-            return; // Salir si el usuario ya existe
-        }
-        
-        // Leer prompt de contraseña
-        System.out.println(entrada.readLine());
-        System.out.print("Contraseña: ");
-        salida.println(teclado.readLine());
-        
-        // Leer confirmación de registro
-        System.out.println(entrada.readLine());
-    }
 
-   private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-    while (true) {
-        String linea;
-        // Mostrar todo lo que manda el servidor hasta que aparezca el prompt
-        while ((linea = entrada.readLine()) != null) {
-            System.out.println(linea);
-            if (linea.contains("escribir 'salir'")) { // ajusta el texto exacto si hace falta
-                break;
+        if (respuesta.contains("ya existe") || respuesta.contains("vacío")) {
+            return; // Salir si hay error
+        }
+
+        // Si llegamos aquí, pedir contraseña
+        System.out.print("Contraseña: ");
+        String password = teclado.readLine();
+        salida.println(password);
+
+        // Leer respuesta final
+        String respuestaFinal = entrada.readLine();
+        System.out.println(respuestaFinal);
+
+        // Si la contraseña no es válida, puede haber otro mensaje
+        if (respuestaFinal.contains("no válida")) {
+            String mensaje = entrada.readLine();
+            if (mensaje != null) {
+                System.out.println(mensaje);
             }
         }
-
-        System.out.print("➤ ");
-        String comando = teclado.readLine();
-
-        if (comando == null || comando.trim().isEmpty()) {
-            System.out.println("⚠ Entrada vacía no permitida.");
-            continue;
-        }
-
-        salida.println(comando);
-
-    if (comando.trim().equalsIgnoreCase("salir")) {
-    return;
-}
-
-
-while ((linea = entrada.readLine()) != null) {
-    System.out.println(linea);
-
-   
-    if (linea.contains("escribir 'salir'") || linea.contains("Opciones:")) {
-        break;
     }
-}
 
-    }
-}
-
-    private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         while (true) {
             String linea;
+            
+            // Leer todo el contenido de la bandeja hasta las opciones
             while ((linea = entrada.readLine()) != null) {
                 System.out.println(linea);
-                
+                if (linea.toLowerCase().contains("escribir 'salir'")) break;
+            }
+
+            System.out.print("➤ ");
+            String comando = teclado.readLine();
+            if (comando == null) break;
+
+            salida.println(comando);
+
+            if (comando.trim().equalsIgnoreCase("salir")) {
+                return; // Salir de la bandeja
+            }
+
+            // Leer respuesta del comando
+            String respuesta = entrada.readLine();
+            if (respuesta != null) {
+                System.out.println(respuesta);
+            }
+        }
+    }
+
+    private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        boolean jugando = true;
+        
+        while (jugando) {
+            String linea;
+            
+            // Leer mensajes del juego
+            while ((linea = entrada.readLine()) != null) {
+                System.out.println(linea);
+
                 if (linea.contains("Ingresa tu número:")) {
                     System.out.print("➤ ");
                     String numero = teclado.readLine();
                     salida.println(numero);
-                } else if (linea.contains("¿Quieres jugar otra vez?")) {
+                } else if (linea.toLowerCase().contains("¿quieres jugar otra vez?")) {
                     System.out.print("➤ ");
                     String respuesta = teclado.readLine();
                     salida.println(respuesta);
-                    
+
                     if (respuesta != null && respuesta.trim().equalsIgnoreCase("n")) {
-                        return; // Salir del juego
+                        jugando = false;
                     }
-                    break; // Continuar con otra ronda
-                } else if (linea.contains("Correcto") || linea.contains("Perdiste")) {
-                    // Continuar leyendo para ver si hay pregunta de continuar
-                    continue;
+                    break; // Salir del bucle interno para continuar o terminar
                 }
             }
+        }
+    }
+
+    private static void enviarMensaje(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        String linea;
+        
+        // Leer lista de usuarios disponibles
+        while ((linea = entrada.readLine()) != null) {
+            System.out.println(linea);
+            if (linea.toLowerCase().contains("escribe el nombre del usuario")) break;
+        }
+
+        System.out.print("➤ ");
+        String destinatario = teclado.readLine();
+        if (destinatario == null) return;
+        
+        salida.println(destinatario);
+
+        // Leer respuesta (puede ser error o solicitud de mensaje)
+        linea = entrada.readLine();
+        System.out.println(linea);
+        
+        // Si hay error (no conectado, inválido, etc.), salir
+        if (linea.toLowerCase().contains("no") || 
+            linea.toLowerCase().contains("inválido") || 
+            linea.toLowerCase().contains("conectado")) {
+            return;
+        }
+
+        // Si llegamos aquí, pedir el mensaje
+        System.out.print("Mensaje ➤ ");
+        String mensaje = teclado.readLine();
+        if (mensaje == null) return;
+        
+        salida.println(mensaje);
+
+        // Leer confirmación
+        String confirmacion = entrada.readLine();
+        if (confirmacion != null) {
+            System.out.println(confirmacion);
         }
     }
 }
