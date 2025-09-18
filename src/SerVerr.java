@@ -22,7 +22,7 @@ public class SerVerr {
        
         ClienteInfo cliente = clientes.get(usuario);
         if (cliente != null) {
-            cliente.salida.println("? NUEVO MENSAJE: " + mensaje);
+            cliente.salida.println("� NUEVO MENSAJE: " + mensaje);
             cliente.salida.println("(Escribe 'menu' para volver al menú o continúa con lo que estabas haciendo)");
         }
     }
