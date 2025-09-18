@@ -9,6 +9,130 @@ public class SerVerr {
     private static final int PUERTO = 8080;
     private static ExecutorService pool = Executors.newFixedThreadPool(10);
     private static Map<String, ClienteInfo> clientes = new ConcurrentHashMap<>();
+    
+    private static void guardarMensaje(String usuario, String mensaje) {
+        File archivo = new File("mensajes/" + usuario + ".txt");
+        archivo.getParentFile().mkdirs(); 
+        try (PrintWriter pw = new PrintWriter(new FileWriter(archivo, true))) {
+            pw.println(mensaje);
+        } catch (IOException e) {
+            System.err.println("Error guardando mensaje para " + usuario + ": " + e.getMessage());
+        }
+        
+       
+        ClienteInfo cliente = clientes.get(usuario);
+        if (cliente != null) {
+            cliente.salida.println("� NUEVO MENSAJE: " + mensaje);
+            cliente.salida.println("(Escribe 'menu' para volver al menú o continúa con lo que estabas haciendo)");
+        }
+    }
+
+    private static List<String> cargarMensajes(String usuario) {
+        List<String> mensajes = new ArrayList<>();
+        File archivo = new File("mensajes/" + usuario + ".txt");
+
+        if (!archivo.exists()) return mensajes;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                mensajes.add(linea);
+            }
+        } catch (IOException e) {
+            System.err.println("Error leyendo mensajes de " + usuario + ": " + e.getMessage());
+        }
+
+        return mensajes;
+    }
+
+    private static boolean eliminarMensaje(String usuario, int index) {
+        File archivo = new File("mensajes/" + usuario + ".txt");
+        List<String> mensajes = cargarMensajes(usuario);
+
+        if (index < 0 || index >= mensajes.size()) return false;
+
+        mensajes.remove(index);  
+
+        try (PrintWriter pw = new PrintWriter(new FileWriter(archivo))) {
+            for (String msg : mensajes) {
+                pw.println(msg);
+            }
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    
+    private static boolean eliminarUsuarioCompleto(String usuario) {
+        try {
+           
+            if (!eliminarUsuarioDelArchivo(usuario)) {
+                System.err.println("Error eliminando usuario del archivo de usuarios");
+                return false;
+            }
+
+           
+            File archivoMensajes = new File("mensajes/" + usuario + ".txt");
+            if (archivoMensajes.exists()) {
+                if (archivoMensajes.delete()) {
+                    System.out.println("Archivo de mensajes eliminado para: " + usuario);
+                } else {
+                    System.err.println("No se pudo eliminar el archivo de mensajes de: " + usuario);
+                }
+            }
+
+            System.out.println("Usuario " + usuario + " eliminado completamente del sistema");
+            System.out.println("El usuario puede registrarse nuevamente con el mismo nombre");
+            return true;
+
+        } catch (Exception e) {
+            System.err.println("Error eliminando usuario " + usuario + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+   
+    private static boolean eliminarUsuarioDelArchivo(String usuarioAEliminar) {
+        File archivo = new File("usuarios.txt");
+        File archivoTemp = new File("usuarios_temp.txt");
+
+        if (!archivo.exists()) {
+            return true; 
+        }
+
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo));
+             PrintWriter pw = new PrintWriter(new FileWriter(archivoTemp))) {
+
+            String linea;
+            boolean encontrado = false;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(":");
+                if (partes.length > 0 && partes[0].equals(usuarioAEliminar)) {
+                    encontrado = true;
+                  
+                    continue;
+                }
+                pw.println(linea); 
+            }
+
+            pw.close();
+            br.close();
+
+            
+            if (archivo.delete() && archivoTemp.renameTo(archivo)) {
+                return encontrado;
+            } else {
+                System.err.println("Error reemplazando el archivo de usuarios");
+                archivoTemp.delete(); 
+                return false;
+            }
+
+        } catch (IOException e) {
+            System.err.println("Error procesando archivo de usuarios: " + e.getMessage());
+            return false;
+        }
+    }
 
     public static void main(String[] args) {
         try (ServerSocket servidor = new ServerSocket(PUERTO);
@@ -17,7 +141,7 @@ public class SerVerr {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
             System.out.println("Escribe 'ayuda' para ver los comandos.");
 
-          
+           
             new Thread(() -> {
                 try {
                     String comando;
@@ -29,7 +153,6 @@ public class SerVerr {
                 }
             }).start();
 
-         
             while (true) {
                 Socket socket = servidor.accept();
                 System.out.println("Nuevo cliente conectado: " + socket.getInetAddress());
@@ -41,6 +164,81 @@ public class SerVerr {
         }
     }
 
+    private static void expulsarCliente() {
+        if (clientes.isEmpty()) {
+            System.out.println("No hay clientes conectados.");
+            return;
+        }
+
+        System.out.println("\n=== CLIENTES CONECTADOS ===");
+        List<String> usuarios = new ArrayList<>(clientes.keySet());
+
+        for (int i = 0; i < usuarios.size(); i++) {
+            System.out.println((i + 1) + ". " + usuarios.get(i));
+        }
+
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+            System.out.print("Ingrese el número del cliente a expulsar (0 para cancelar): ");
+            String entrada = reader.readLine();
+
+            if (entrada == null || entrada.trim().equals("0")) {
+                System.out.println("Operación cancelada.");
+                return;
+            }
+
+            int index = Integer.parseInt(entrada.trim()) - 1;
+
+            if (index >= 0 && index < usuarios.size()) {
+                String usuario = usuarios.get(index);
+                ClienteInfo cliente = clientes.get(usuario);
+
+                if (cliente != null) {
+                    try {
+                      
+                        cliente.salida.println(" Has sido expulsado del servidor.");
+                        cliente.salida.println("Tu cuenta ha sido eliminada del sistema.");
+                        cliente.salida.println("Puedes registrarte nuevamente si lo deseas.");
+                        cliente.salida.println("DISCONNECT"); // Señal especial para desconexión
+                        Thread.sleep(500); 
+
+                        
+                        cliente.socket.close();
+
+                       
+                        clientes.remove(usuario);
+
+                       
+                        if (eliminarUsuarioCompleto(usuario)) {
+                            System.out.println("✅ Cliente '" + usuario + "' expulsado y eliminado del sistema.");
+                            System.out.println("Puede registrarse nuevamente con el mismo nombre.");
+                        } else {
+                            System.out.println("⚠️ Cliente '" + usuario + "' expulsado pero hubo errores eliminando sus datos.");
+                        }
+
+                    } catch (Exception e) {
+                        System.out.println("Error al expulsar cliente, intentando eliminación de datos: " + e.getMessage());
+                        clientes.remove(usuario);
+                        eliminarUsuarioCompleto(usuario);
+                    }
+                } else {
+                    System.out.println("No se encontró al cliente.");
+                }
+            } else {
+                System.out.println("Índice fuera de rango.");
+            }
+
+        } catch (NumberFormatException e) {
+            System.out.println("Por favor ingrese un número válido.");
+        } catch (Exception e) {
+            System.out.println("Error al expulsar cliente: " + e.getMessage());
+        }
+    }
+  private static void rehabilitarUsuario() {
+        System.out.println("Esta funcionalidad no está disponible.");
+        System.out.println("Los usuarios expulsados pueden registrarse nuevamente automáticamente.");
+    }
+  
     private static void procesarComando(String comando) {
         switch (comando.toLowerCase()) {
             case "ayuda":
@@ -50,6 +248,7 @@ public class SerVerr {
                 System.out.println("clientes  - Ver clientes conectados");
                 System.out.println("usuarios  - Ver usuarios registrados");
                 System.out.println("mensaje   - Enviar mensaje a un cliente");
+                System.out.println("expulsar  - Expulsar y eliminar a un cliente (puede re-registrarse)");
                 System.out.println("parar     - Cerrar servidor\n");
                 break;
 
@@ -105,13 +304,26 @@ public class SerVerr {
                 System.out.println();
                 break;
 
+            case "expulsados":
+                System.out.println("Comando no disponible.");
+                System.out.println("Los usuarios expulsados pueden registrarse nuevamente automáticamente.");
+                break;
+
             case "mensaje":
                 enviarMensajeACliente();
                 break;
+               
+            case "expulsar":
+                expulsarCliente();
+                break;
 
+            case "rehabilitar":
+                rehabilitarUsuario();
+                break;
+        
             default:
                 System.out.println("Comando no reconocido. Escribe 'ayuda'");
-        }
+        } 
     }
 
     private static void enviarMensajeACliente() {
@@ -151,7 +363,7 @@ public class SerVerr {
                 return;
             }
 
-            cliente.bandeja.add("[ADMIN]: " + mensaje.trim());
+            guardarMensaje(nombreUsuario.trim(), "[ADMIN]: " + mensaje.trim());
             System.out.println("Mensaje enviado a " + nombreUsuario);
 
         } catch (IOException e) {
@@ -159,7 +371,6 @@ public class SerVerr {
         }
     }
 
-   
     private static class ClienteInfo {
         String usuario;
         PrintWriter salida;
@@ -191,7 +402,6 @@ public class SerVerr {
 
                 while (conectado) {
                     if (!logueado) {
-                       
                         mostrarMenuPrincipal();
                         String opcion = entrada.readLine();
                         if (opcion == null) break;
@@ -213,7 +423,6 @@ public class SerVerr {
                                 salida.println("Opción inválida. Seleccione 1, 2 o 3.");
                         }
                     } else {
-                     
                         mostrarMenuPostLogin();
                         String opcion = entrada.readLine();
                         if (opcion == null) break;
@@ -226,11 +435,14 @@ public class SerVerr {
                                 juegoAdivinaNumero(entrada);
                                 break;
                             case "3":
+                                enviarMensajeUsuario(entrada);
+                                break;
+                            case "4":
                                 salida.println("Cerrando sesión. Hasta luego " + usuario);
                                 logueado = false;
                                 break;
                             default:
-                                salida.println("Opción inválida. Seleccione 1, 2 o 3.");
+                                salida.println("Opción inválida. Seleccione 1, 2, 3 o 4.");
                         }
                     }
                 }
@@ -258,8 +470,9 @@ public class SerVerr {
             salida.println("=== MENU PRINCIPAL ===");
             salida.println("1. Bandeja de entrada");
             salida.println("2. Jugar 'Adivina número'");
-            salida.println("3. Cerrar sesión");
-            salida.println("Seleccione opción (1-3):");
+            salida.println("3. Enviar mensaje a otro usuario");
+            salida.println("4. Cerrar sesión");
+            salida.println("Seleccione opción (1-4):");
         }
 
         private boolean login(BufferedReader entrada) throws IOException {
@@ -282,65 +495,149 @@ public class SerVerr {
                 return false;
             }
         }
-
+        
         private void registro(BufferedReader entrada) throws IOException {
             salida.println("Ingrese nuevo usuario:");
             String u = entrada.readLine();
             if (u == null) return;
 
             u = u.trim();
+            if (u.isEmpty()) {
+                salida.println("El nombre de usuario no puede estar vacío.");
+                return;
+            }
+
             if (usuarioExiste(u)) {
                 salida.println("El usuario ya existe");
                 return;
             }
 
-            salida.println("Ingrese contraseña:");
+            salida.println("Ingrese contraseña (mínimo 6 caracteres, debe tener letras y números):");
             String p = entrada.readLine();
             if (p == null) return;
 
+            if (!esContrasenaSegura(p)) {
+                salida.println("Contraseña no válida.");
+                salida.println("Debe tener al menos 6 caracteres e incluir letras y números.");
+                return;
+            }
+ 
             if (guardarUsuario(u, hashPassword(p))) {
+             
+                File archivoMensajes = new File("mensajes/" + u + ".txt");
+                if (archivoMensajes.exists()) {
+                    archivoMensajes.delete();
+                    System.out.println("Se eliminaron mensajes anteriores del usuario: " + u);
+                }
+
                 salida.println("Usuario registrado correctamente");
                 System.out.println("Nuevo usuario registrado: " + u);
             } else {
                 salida.println("Error registrando usuario");
             }
         }
-private void mostrarBandeja(BufferedReader entrada) throws IOException {
-    ClienteInfo c = clientes.get(usuario);
-    boolean enBandeja = true;
 
-    while (enBandeja) {
-        salida.println("╔════════════════════════════════╗");
-        salida.println("║        BANDEJA DE ENTRADA      ║");
-        salida.println("╚════════════════════════════════╝");
+        private void mostrarBandeja(BufferedReader entrada) throws IOException {
+            boolean enBandeja = true;
 
-        if (c.bandeja.isEmpty()) {
-            salida.println("📭 No hay mensajes nuevos.");
-        } else {
-            salida.println("📬 Mensajes:");
-            for (int i = 0; i < c.bandeja.size(); i++) {
-                salida.println((i + 1) + ". " + c.bandeja.get(i));
+            while (enBandeja) {
+                List<String> mensajes = cargarMensajes(usuario);
+
+                salida.println("╔════════════════════════════════╗");
+                salida.println("║        BANDEJA DE ENTRADA      ║");
+                salida.println("╚════════════════════════════════╝");
+
+                if (mensajes.isEmpty()) {
+                    salida.println("📭 No hay mensajes nuevos.");
+                } else {
+                    salida.println("📬 Mensajes:");
+                    for (int i = 0; i < mensajes.size(); i++) {
+                        salida.println((i + 1) + ". " + mensajes.get(i));
+                    }
+                }
+
+                salida.println("\nOpciones:");
+                salida.println(" - escribir 'actualizar' para refrescar la bandeja");
+                salida.println(" - escribir 'eliminar <número>' para borrar un mensaje");
+                salida.println(" - escribir 'salir' para volver al menú principal");
+                salida.println(" - escribir 'menu' para ir al menú principal");
+
+                String comando = entrada.readLine();
+                if (comando == null) break;
+
+                if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
+                    enBandeja = false;
+                } else if (comando.trim().equalsIgnoreCase("actualizar")) {
+                    salida.println("Bandeja actualizada...");
+                } else if (comando.toLowerCase().startsWith("eliminar")) {
+                    try {
+                        String[] partes = comando.split(" ");
+                        if (partes.length < 2) {
+                            salida.println("Uso: eliminar <número>");
+                            continue;
+                        }
+                        int index = Integer.parseInt(partes[1]) - 1;
+                        if (eliminarMensaje(usuario, index)) {
+                            salida.println("Mensaje eliminado.");
+                        } else {
+                            salida.println("Índice inválido o error al eliminar.");
+                        }
+                    } catch (NumberFormatException e) {
+                        salida.println("Uso: eliminar <número>");
+                    }
+                } else {
+                    salida.println("Comando no reconocido.");
+                }
             }
         }
 
-        salida.println("\nOpciones:");
-        salida.println(" - escribir 'actualizar' para refrescar la bandeja");
-        salida.println(" - escribir 'salir' para volver al menú principal");
+        private void enviarMensajeUsuario(BufferedReader entrada) throws IOException {
+            salida.println("=== USUARIOS CONECTADOS ===");
+            List<String> disponibles = new ArrayList<>();
 
-        String comando = entrada.readLine();
-        if (comando == null) break;
+            for (String u : clientes.keySet()) {
+                if (!u.equals(usuario)) {
+                    disponibles.add(u);
+                }
+            }
 
-        if (comando.trim().equalsIgnoreCase("salir")) {
-            enBandeja = false;
-        } else if (comando.trim().equalsIgnoreCase("actualizar")) {
-            // simplemente vuelve a mostrar la bandeja en el siguiente ciclo
-            salida.println(" Bandeja actualizada...");
-        } else {
-            salida.println(" Comando no reconocido.");
+            if (disponibles.isEmpty()) {
+                salida.println("No hay otros usuarios conectados.");
+                return;
+            }
+
+            for (int i = 0; i < disponibles.size(); i++) {
+                salida.println((i + 1) + ". " + disponibles.get(i));
+            }
+
+            salida.println("Escribe el nombre del usuario al que quieres enviar un mensaje:");
+            String destino = entrada.readLine();
+            if (destino == null || destino.trim().isEmpty()) {
+                salida.println("Usuario inválido.");
+                return;
+            }
+
+            destino = destino.trim();
+            if (!clientes.containsKey(destino)) {
+                salida.println("El usuario no está conectado.");
+                return;
+            }
+
+            salida.println("Escribe tu mensaje:");
+            String mensaje = entrada.readLine();
+            if (mensaje == null || mensaje.trim().isEmpty()) {
+                salida.println("Mensaje vacío. Cancelado.");
+                return;
+            }
+
+            String mensajeFinal = "[" + usuario + "]: " + mensaje.trim();
+
+           
+            guardarMensaje(destino, mensajeFinal);
+
+            salida.println("✅ Mensaje enviado a " + destino);
         }
-    }
-}
-
+        
         private void juegoAdivinaNumero(BufferedReader entrada) throws IOException {
             boolean seguirJugando = true;
 
@@ -352,11 +649,17 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
                 salida.println("=== ADIVINA EL NÚMERO ===");
                 salida.println("Adivina el número entre 1 y 10");
                 salida.println("Tienes " + intentos + " intentos");
+                salida.println("(Puedes escribir 'menu' para volver al menú principal)");
 
                 while (intentos > 0 && !acertado) {
                     salida.println("Ingresa tu número:");
                     String resp = entrada.readLine();
                     if (resp == null) return;
+
+                    if (resp.trim().equalsIgnoreCase("menu")) {
+                        salida.println("Volviendo al menú principal...");
+                        return;
+                    }
 
                     try {
                         int numero = Integer.parseInt(resp.trim());
@@ -388,16 +691,29 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
                     salida.println("Perdiste. El número era: " + numeroSecreto);
                 }
 
-                salida.println("¿Quieres jugar otra vez? (s/n):");
+                salida.println("¿Quieres jugar otra vez? (s/n) o 'menu' para volver:");
                 String respuesta = entrada.readLine();
 
-                if (respuesta == null || respuesta.trim().equalsIgnoreCase("n")) {
+                if (respuesta == null || respuesta.trim().equalsIgnoreCase("n") || 
+                    respuesta.trim().equalsIgnoreCase("menu")) {
                     seguirJugando = false;
                 }
             }
         }
 
-        // ----------- Métodos auxiliares -----------
+        private boolean esContrasenaSegura(String contrasena) {
+            if (contrasena.length() < 6) return false;
+
+            boolean tieneLetra = false;
+            boolean tieneNumero = false;
+
+            for (char c : contrasena.toCharArray()) {
+                if (Character.isLetter(c)) tieneLetra = true;
+                else if (Character.isDigit(c)) tieneNumero = true;
+            }
+
+            return tieneLetra && tieneNumero;
+        }
 
         private synchronized boolean guardarUsuario(String usuario, String password) {
             try (PrintWriter pw = new PrintWriter(new FileWriter("usuarios.txt", true))) {
@@ -412,7 +728,8 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
             try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
                 String linea;
                 while ((linea = br.readLine()) != null) {
-                    if (linea.split(":")[0].equals(usuario)) {
+                    String[] partes = linea.split(":");
+                    if (partes.length > 0 && partes[0].equals(usuario)) {
                         return true;
                     }
                 }
