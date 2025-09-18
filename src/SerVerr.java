@@ -508,4 +508,16 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
         }
     }
    
-} 
+}  private boolean esContrasenaSegura(String contrasena) {
+    if (contrasena.length() < 6) return false;
+
+    boolean tieneLetra = false;
+    boolean tieneNumero = false;
+
+    for (char c : contrasena.toCharArray()) {
+        if (Character.isLetter(c)) tieneLetra = true;
+        else if (Character.isDigit(c)) tieneNumero = true;
+    }
+
+    return tieneLetra && tieneNumero;
+}
