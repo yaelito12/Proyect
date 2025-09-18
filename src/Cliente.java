@@ -6,6 +6,7 @@ public class Cliente {
     private static final int PUERTO = 8080;
     private static volatile boolean expulsado = false;
     private static volatile boolean logueado = false;
+    private static volatile boolean enMenu = true;
 
     public static void main(String[] args) {
         try (Socket socket = new Socket(HOST, PUERTO);
@@ -19,6 +20,7 @@ public class Cliente {
 
             while (conectado && !expulsado) {
                 if (!logueado) {
+                   
                     String linea;
                     while ((linea = entrada.readLine()) != null) {
                         if (linea.equals("DISCONNECT")) {
@@ -26,6 +28,7 @@ public class Cliente {
                             conectado = false;
                             break;
                         }
+                        
                         System.out.println(linea);
                         if (linea.toLowerCase().contains("seleccione opción")) break;
                     }
@@ -35,6 +38,7 @@ public class Cliente {
                     System.out.print("> ");
                     String opcion = teclado.readLine();
                     if (opcion == null || expulsado) break;
+                    
                     salida.println(opcion);
 
                     switch (opcion.trim()) {
@@ -57,6 +61,7 @@ public class Cliente {
                             System.out.println(error);
                     }
                 } else {
+                  
                     mostrarMenuYProcesar(entrada, salida, teclado);
                 }
             }
@@ -74,13 +79,18 @@ public class Cliente {
     }
 
     private static void mostrarMenuYProcesar(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        enMenu = true; 
         String linea;
+        
+       
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
                 return;
             }
-            if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
+            
+           
+            if (enMenu && linea.startsWith("🔔 NUEVO MENSAJE:")) {
                 System.out.println("\n" + linea);
                 String mensaje = entrada.readLine();
                 if (mensaje != null) {
@@ -88,6 +98,7 @@ public class Cliente {
                 }
                 continue;
             }
+            
             System.out.println(linea);
             if (linea.toLowerCase().contains("seleccione opción")) break;
         }
@@ -95,17 +106,24 @@ public class Cliente {
         System.out.print("> ");
         String opcion = teclado.readLine();
         if (opcion == null || expulsado) return;
+        
         salida.println(opcion);
 
         switch (opcion.trim()) {
             case "1":
+                enMenu = false;
                 bandeja(entrada, salida, teclado);
+                enMenu = true; 
                 break;
             case "2":
+                enMenu = false;
                 juego(entrada, salida, teclado);
+                enMenu = true;  
                 break;
             case "3":
+                enMenu = false;
                 enviarMensaje(entrada, salida, teclado);
+                enMenu = true; 
                 break;
             case "4":
                 String sesionCerrada = entrada.readLine();
@@ -135,6 +153,8 @@ public class Cliente {
 
         String respuesta = entrada.readLine();
         System.out.println(respuesta);
+        
+       
         if (respuesta.contains("eliminada") || respuesta.contains("expulsado")) {
             try {
                 String mensajeExtra1 = entrada.readLine();
@@ -148,6 +168,7 @@ public class Cliente {
             } catch (IOException ignored) {}
             return false;
         }
+        
         return respuesta.contains("Bienvenido");
     }
 
@@ -161,6 +182,7 @@ public class Cliente {
 
         String respuesta = entrada.readLine();
         System.out.println(respuesta);
+
         if (respuesta.contains("ya existe") || respuesta.contains("vacío")) {
             return;
         }
@@ -172,6 +194,7 @@ public class Cliente {
 
         String respuestaFinal = entrada.readLine();
         System.out.println(respuestaFinal);
+
         if (respuestaFinal.contains("no válida")) {
             String mensaje = entrada.readLine();
             if (mensaje != null) {
@@ -183,15 +206,26 @@ public class Cliente {
     private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         while (!expulsado) {
             String linea;
+            
+          
             while ((linea = entrada.readLine()) != null) {
                 if (linea.equals("DISCONNECT")) {
                     expulsado = true;
                     return;
                 }
+                
+              
+                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
+                
+                    entrada.readLine();
+                    continue; 
+                }
+                
                 System.out.println(linea);
                 if (linea.toLowerCase().contains("escribir 'salir'") || 
                     linea.toLowerCase().contains("escribir 'menu'")) break;
             }
+
             if (expulsado) return;
 
             System.out.print("> ");
@@ -204,6 +238,7 @@ public class Cliente {
                 return;
             }
 
+        
             String respuesta = entrada.readLine();
             if (respuesta != null && !respuesta.equals("DISCONNECT")) {
                 System.out.println(respuesta);
@@ -213,19 +248,32 @@ public class Cliente {
 
     private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         boolean jugando = true;
+        
         while (jugando && !expulsado) {
             String linea;
+            
+        
             while ((linea = entrada.readLine()) != null) {
                 if (linea.equals("DISCONNECT")) {
                     expulsado = true;
                     return;
                 }
+                
+             
+                if (linea.startsWith("? NUEVO MENSAJE:")) {
+                 
+                    entrada.readLine();
+                    continue; 
+                }
+                
                 System.out.println(linea);
+
                 if (linea.contains("Ingresa tu número:")) {
                     System.out.print("> ");
                     String numero = teclado.readLine();
                     if (numero == null || expulsado) return;
                     salida.println(numero);
+                    
                     if (numero.trim().equalsIgnoreCase("menu")) {
                         return;
                     }
@@ -234,6 +282,7 @@ public class Cliente {
                     String respuesta = teclado.readLine();
                     if (respuesta == null || expulsado) return;
                     salida.println(respuesta);
+
                     if (respuesta != null && (respuesta.trim().equalsIgnoreCase("n") || 
                                             respuesta.trim().equalsIgnoreCase("menu"))) {
                         jugando = false;
@@ -247,23 +296,32 @@ public class Cliente {
     private static void enviarMensaje(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         String linea;
         boolean hayUsuarios = false;
+        
+     
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
                 return;
             }
             System.out.println(linea);
+            
+       
             if (linea.toLowerCase().contains("no hay otros usuarios conectados")) {
-                return;
+                return; 
             }
+            
+           
             if (linea.matches("^\\d+\\..*")) {
                 hayUsuarios = true;
             }
+            
             if (linea.toLowerCase().contains("escribe el nombre del usuario")) {
                 hayUsuarios = true;
                 break;
             }
         }
+
+      
         if (!hayUsuarios) {
             return;
         }
@@ -271,22 +329,28 @@ public class Cliente {
         System.out.print("> ");
         String destinatario = teclado.readLine();
         if (destinatario == null || expulsado) return;
+        
         salida.println(destinatario);
 
+       
         linea = entrada.readLine();
         if (linea == null) return;
         System.out.println(linea);
+        
         if (linea.toLowerCase().contains("no") || 
             linea.toLowerCase().contains("inválido") || 
             linea.toLowerCase().contains("conectado")) {
             return;
         }
 
+      
         System.out.print("Mensaje > ");
         String mensaje = teclado.readLine();
         if (mensaje == null || expulsado) return;
+        
         salida.println(mensaje);
 
+      
         String confirmacion = entrada.readLine();
         if (confirmacion != null) {
             System.out.println(confirmacion);
