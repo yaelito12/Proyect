@@ -87,7 +87,46 @@ private static boolean eliminarMensaje(String usuario, int index) {
             System.out.println("Servidor detenido: " + e.getMessage());
         }
     }
+private static void expulsarCliente() {
+    if (clientes.isEmpty()) {
+        System.out.println("No hay clientes conectados.");
+        return;
+    }
 
+    System.out.println("\n=== CLIENTES CONECTADOS ===");
+    List<String> usuarios = new ArrayList<>(clientes.keySet());
+
+    for (int i = 0; i < usuarios.size(); i++) {
+        System.out.println((i + 1) + ". " + usuarios.get(i));
+    }
+
+    try {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.print("Ingrese el número del cliente a expulsar: ");
+        String entrada = reader.readLine();
+
+        int index = Integer.parseInt(entrada.trim()) - 1;
+
+        if (index >= 0 && index < usuarios.size()) {
+            String usuario = usuarios.get(index);
+            ClienteInfo cliente = clientes.get(usuario);
+
+            if (cliente != null) {
+                cliente.salida.println("⛔ Has sido expulsado por el servidor.");
+                cliente.socket.close(); 
+                clientes.remove(usuario); 
+                System.out.println("Cliente '" + usuario + "' expulsado.");
+            } else {
+                System.out.println("No se encontró al cliente.");
+            }
+        } else {
+            System.out.println("Índice fuera de rango.");
+        }
+
+    } catch (Exception e) {
+        System.out.println("Error al expulsar cliente: " + e.getMessage());
+    }
+}
     private static void procesarComando(String comando) {
         switch (comando.toLowerCase()) {
             case "ayuda":
@@ -97,7 +136,9 @@ private static boolean eliminarMensaje(String usuario, int index) {
                 System.out.println("clientes  - Ver clientes conectados");
                 System.out.println("usuarios  - Ver usuarios registrados");
                 System.out.println("mensaje   - Enviar mensaje a un cliente");
+                 System.out.println("expulsar  - Desconectar a un cliente conectado");
                 System.out.println("parar     - Cerrar servidor\n");
+               
                 break;
 
             case "parar":
@@ -155,15 +196,14 @@ private static boolean eliminarMensaje(String usuario, int index) {
             case "mensaje":
                 enviarMensajeACliente();
                 break;
-                   
-                
-                
-              
-            default:
-                System.out.println("Comando no reconocido. Escribe 'ayuda'");
-        }  case "expulsar":
+               
+                 case "expulsar":
     expulsarCliente();
     break;
+        
+            default:
+                System.out.println("Comando no reconocido. Escribe 'ayuda'");
+        } 
     
     }
 
@@ -361,7 +401,13 @@ if (!esContrasenaSegura(p)) {
                 System.out.println("Nuevo usuario registrado: " + u);
             } else {
                 salida.println("Error registrando usuario");
+                
+                
             }
+            
+            
+            
+            
         }
 private void mostrarBandeja(BufferedReader entrada) throws IOException {
     boolean enBandeja = true;
