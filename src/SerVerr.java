@@ -375,40 +375,49 @@ guardarMensaje(nombreUsuario.trim(), "[ADMIN]: " + mensaje.trim());
                 return false;
             }
         }
+        
+private void registro(BufferedReader entrada) throws IOException {
+    salida.println("Ingrese nuevo usuario:");
+    String u = entrada.readLine();
+    if (u == null) return;
 
-        private void registro(BufferedReader entrada) throws IOException {
-            salida.println("Ingrese nuevo usuario:");
-            String u = entrada.readLine();
-            if (u == null) return;
+    u = u.trim();
+    if (u.isEmpty()) {
+        salida.println("El nombre de usuario no puede estar vacío.");
+        return;
+    }
 
-            u = u.trim();
-            if (usuarioExiste(u)) {
-                salida.println("El usuario ya existe");
-                return;
-            }
+    if (usuarioExiste(u)) {
+        salida.println(" El usuario ya existe");
+        return;
+    }
 
-           salida.println("Ingrese contraseña (mínimo 6 caracteres, debe tener letras y números):");
-String p = entrada.readLine();
-if (p == null) return;
+    salida.println("Ingrese contraseña (mínimo 6 caracteres, debe tener letras y números):");
+    String p = entrada.readLine();
+    if (p == null) return;
 
-if (!esContrasenaSegura(p)) {
-    salida.println("❌ Contraseña no válida.");
-    salida.println("Debe tener al menos 6 caracteres, e incluir letras y números.");
-    return;
-}
-            if (guardarUsuario(u, hashPassword(p))) {
-                salida.println("Usuario registrado correctamente");
-                System.out.println("Nuevo usuario registrado: " + u);
-            } else {
-                salida.println("Error registrando usuario");
-                
-                
-            }
-            
-            
-            
-            
+    if (!esContrasenaSegura(p)) {
+        salida.println(" Contraseña no válida.");
+        salida.println("Debe tener al menos 6 caracteres e incluir letras y números.");
+        return;
+    }
+
+    if (guardarUsuario(u, hashPassword(p))) {
+        
+        File archivoMensajes = new File("mensajes/" + u + ".txt");
+        if (archivoMensajes.exists()) {
+            archivoMensajes.delete();
+            System.out.println("Se eliminaron mensajes anteriores del usuario: " + u);
         }
+
+        salida.println(" Usuario registrado correctamente");
+        System.out.println("Nuevo usuario registrado: " + u);
+    } else {
+        salida.println(" Error registrando usuario");
+    }
+}
+
+
 private void mostrarBandeja(BufferedReader entrada) throws IOException {
     boolean enBandeja = true;
 
