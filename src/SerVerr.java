@@ -341,10 +341,15 @@ guardarMensaje(nombreUsuario.trim(), "[ADMIN]: " + mensaje.trim());
                 return;
             }
 
-            salida.println("Ingrese contraseña:");
-            String p = entrada.readLine();
-            if (p == null) return;
+           salida.println("Ingrese contraseña (mínimo 6 caracteres, debe tener letras y números):");
+String p = entrada.readLine();
+if (p == null) return;
 
+if (!esContrasenaSegura(p)) {
+    salida.println("❌ Contraseña no válida.");
+    salida.println("Debe tener al menos 6 caracteres, e incluir letras y números.");
+    return;
+}
             if (guardarUsuario(u, hashPassword(p))) {
                 salida.println("Usuario registrado correctamente");
                 System.out.println("Nuevo usuario registrado: " + u);
@@ -457,7 +462,19 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
             }
         }
 
-   
+   private boolean esContrasenaSegura(String contrasena) {
+    if (contrasena.length() < 6) return false;
+
+    boolean tieneLetra = false;
+    boolean tieneNumero = false;
+
+    for (char c : contrasena.toCharArray()) {
+        if (Character.isLetter(c)) tieneLetra = true;
+        else if (Character.isDigit(c)) tieneNumero = true;
+    }
+
+    return tieneLetra && tieneNumero;
+}
 
         private synchronized boolean guardarUsuario(String usuario, String password) {
             try (PrintWriter pw = new PrintWriter(new FileWriter("usuarios.txt", true))) {
@@ -508,16 +525,4 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
         }
     }
    
-}  private boolean esContrasenaSegura(String contrasena) {
-    if (contrasena.length() < 6) return false;
-
-    boolean tieneLetra = false;
-    boolean tieneNumero = false;
-
-    for (char c : contrasena.toCharArray()) {
-        if (Character.isLetter(c)) tieneLetra = true;
-        else if (Character.isDigit(c)) tieneNumero = true;
-    }
-
-    return tieneLetra && tieneNumero;
-}
+}  
