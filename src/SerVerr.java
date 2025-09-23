@@ -9,6 +9,8 @@ public class SerVerr {
     private static final int PUERTO = 8080;
     private static ExecutorService pool = Executors.newFixedThreadPool(10);
     private static Map<String, ClienteInfo> clientes = new ConcurrentHashMap<>();
+    private static Set<String> usuariosExpulsados = ConcurrentHashMap.newKeySet();
+    private static Map<String, Set<String>> usuariosBloqueados = new ConcurrentHashMap<>();
     
     private static void guardarMensaje(String usuario, String mensaje) {
         File archivo = new File("mensajes/" + usuario + ".txt");
@@ -19,10 +21,9 @@ public class SerVerr {
             System.err.println("Error guardando mensaje para " + usuario + ": " + e.getMessage());
         }
         
-       
         ClienteInfo cliente = clientes.get(usuario);
         if (cliente != null) {
-            cliente.salida.println("� NUEVO MENSAJE: " + mensaje);
+            cliente.salida.println("🔔 NUEVO MENSAJE: " + mensaje);
             cliente.salida.println("(Escribe 'menu' para volver al menú o continúa con lo que estabas haciendo)");
         }
     }
@@ -63,16 +64,13 @@ public class SerVerr {
         }
     }
 
-    
     private static boolean eliminarUsuarioCompleto(String usuario) {
         try {
-           
             if (!eliminarUsuarioDelArchivo(usuario)) {
                 System.err.println("Error eliminando usuario del archivo de usuarios");
                 return false;
             }
 
-           
             File archivoMensajes = new File("mensajes/" + usuario + ".txt");
             if (archivoMensajes.exists()) {
                 if (archivoMensajes.delete()) {
@@ -82,6 +80,7 @@ public class SerVerr {
                 }
             }
 
+            usuariosExpulsados.add(usuario);
             System.out.println("Usuario " + usuario + " eliminado completamente del sistema");
             System.out.println("El usuario puede registrarse nuevamente con el mismo nombre");
             return true;
@@ -92,7 +91,6 @@ public class SerVerr {
         }
     }
 
-   
     private static boolean eliminarUsuarioDelArchivo(String usuarioAEliminar) {
         File archivo = new File("usuarios.txt");
         File archivoTemp = new File("usuarios_temp.txt");
@@ -110,7 +108,6 @@ public class SerVerr {
                 String[] partes = linea.split(":");
                 if (partes.length > 0 && partes[0].equals(usuarioAEliminar)) {
                     encontrado = true;
-                  
                     continue;
                 }
                 pw.println(linea); 
@@ -119,7 +116,6 @@ public class SerVerr {
             pw.close();
             br.close();
 
-            
             if (archivo.delete() && archivoTemp.renameTo(archivo)) {
                 return encontrado;
             } else {
@@ -134,6 +130,35 @@ public class SerVerr {
         }
     }
 
+    private static List<String> obtenerTodosLosUsuarios() {
+        List<String> usuarios = new ArrayList<>();
+        try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(":");
+                if (partes.length >= 1) {
+                    usuarios.add(partes[0]);
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error leyendo usuarios: " + e.getMessage());
+        }
+        return usuarios;
+    }
+
+    private static boolean usuarioExisteEnArchivo(String usuario) {
+        try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] partes = linea.split(":");
+                if (partes.length > 0 && partes[0].equals(usuario)) {
+                    return true;
+                }
+            }
+        } catch (IOException ignored) {}
+        return false;
+    }
+
     public static void main(String[] args) {
         try (ServerSocket servidor = new ServerSocket(PUERTO);
              BufferedReader consola = new BufferedReader(new InputStreamReader(System.in))) {
@@ -141,7 +166,6 @@ public class SerVerr {
             System.out.println("Servidor iniciado en puerto " + PUERTO);
             System.out.println("Escribe 'ayuda' para ver los comandos.");
 
-           
             new Thread(() -> {
                 try {
                     String comando;
@@ -195,20 +219,15 @@ public class SerVerr {
 
                 if (cliente != null) {
                     try {
-                      
-                        cliente.salida.println(" Has sido expulsado del servidor.");
+                        cliente.salida.println("❌ Has sido expulsado del servidor.");
                         cliente.salida.println("Tu cuenta ha sido eliminada del sistema.");
                         cliente.salida.println("Puedes registrarte nuevamente si lo deseas.");
-                        cliente.salida.println("DISCONNECT"); // Señal especial para desconexión
+                        cliente.salida.println("DISCONNECT");
                         Thread.sleep(500); 
 
-                        
                         cliente.socket.close();
-
-                       
                         clientes.remove(usuario);
 
-                       
                         if (eliminarUsuarioCompleto(usuario)) {
                             System.out.println("✅ Cliente '" + usuario + "' expulsado y eliminado del sistema.");
                             System.out.println("Puede registrarse nuevamente con el mismo nombre.");
@@ -234,7 +253,10 @@ public class SerVerr {
             System.out.println("Error al expulsar cliente: " + e.getMessage());
         }
     }
-  private static void rehabilitarUsuario() {
+
+   
+
+    private static void rehabilitarUsuario() {
         System.out.println("Esta funcionalidad no está disponible.");
         System.out.println("Los usuarios expulsados pueden registrarse nuevamente automáticamente.");
     }
@@ -247,6 +269,7 @@ public class SerVerr {
                 System.out.println("estado    - Ver estado del servidor");
                 System.out.println("clientes  - Ver clientes conectados");
                 System.out.println("usuarios  - Ver usuarios registrados");
+            
                 System.out.println("mensaje   - Enviar mensaje a un cliente");
                 System.out.println("expulsar  - Expulsar y eliminar a un cliente (puede re-registrarse)");
                 System.out.println("parar     - Cerrar servidor\n");
@@ -265,6 +288,7 @@ public class SerVerr {
                 System.out.println("\n=== ESTADO DEL SERVIDOR ===");
                 System.out.println("Puerto: " + PUERTO);
                 System.out.println("Clientes conectados: " + clientes.size());
+               
                 System.out.println("Estado: ACTIVO\n");
                 break;
 
@@ -304,11 +328,7 @@ public class SerVerr {
                 System.out.println();
                 break;
 
-            case "expulsados":
-                System.out.println("Comando no disponible.");
-                System.out.println("Los usuarios expulsados pueden registrarse nuevamente automáticamente.");
-                break;
-
+          
             case "mensaje":
                 enviarMensajeACliente();
                 break;
@@ -437,12 +457,13 @@ public class SerVerr {
                             case "3":
                                 enviarMensajeUsuario(entrada);
                                 break;
-                            case "4":
+                           
+                            case "5":
                                 salida.println("Cerrando sesión. Hasta luego " + usuario);
                                 logueado = false;
                                 break;
                             default:
-                                salida.println("Opción inválida. Seleccione 1, 2, 3 o 4.");
+                                salida.println("Opción inválida. Seleccione 1, 2, 3, 4 o 5.");
                         }
                     }
                 }
@@ -471,8 +492,9 @@ public class SerVerr {
             salida.println("1. Bandeja de entrada");
             salida.println("2. Jugar 'Adivina número'");
             salida.println("3. Enviar mensaje a otro usuario");
-            salida.println("4. Cerrar sesión");
-            salida.println("Seleccione opción (1-4):");
+            salida.println("4. Gestionar bloqueos");
+            salida.println("5. Cerrar sesión");
+            salida.println("Seleccione opción (1-5):");
         }
 
         private boolean login(BufferedReader entrada) throws IOException {
@@ -523,7 +545,6 @@ public class SerVerr {
             }
  
             if (guardarUsuario(u, hashPassword(p))) {
-             
                 File archivoMensajes = new File("mensajes/" + u + ".txt");
                 if (archivoMensajes.exists()) {
                     archivoMensajes.delete();
@@ -592,22 +613,27 @@ public class SerVerr {
         }
 
         private void enviarMensajeUsuario(BufferedReader entrada) throws IOException {
-            salida.println("=== USUARIOS CONECTADOS ===");
+            salida.println("=== USUARIOS REGISTRADOS ===");
+            List<String> todosUsuarios = obtenerTodosLosUsuarios();
             List<String> disponibles = new ArrayList<>();
 
-            for (String u : clientes.keySet()) {
+            for (String u : todosUsuarios) {
                 if (!u.equals(usuario)) {
                     disponibles.add(u);
                 }
             }
 
             if (disponibles.isEmpty()) {
-                salida.println("No hay otros usuarios conectados.");
+                salida.println("No hay otros usuarios registrados.");
                 return;
             }
 
             for (int i = 0; i < disponibles.size(); i++) {
-                salida.println((i + 1) + ". " + disponibles.get(i));
+                String u = disponibles.get(i);
+                String estado = clientes.containsKey(u) ? "(conectado)" : "(desconectado)";
+                Set<String> bloqueados = usuariosBloqueados.get(usuario);
+                String bloqueado = (bloqueados != null && bloqueados.contains(u)) ? " [BLOQUEADO]" : "";
+                salida.println((i + 1) + ". " + u + " " + estado + bloqueado);
             }
 
             salida.println("Escribe el nombre del usuario al que quieres enviar un mensaje:");
@@ -618,8 +644,9 @@ public class SerVerr {
             }
 
             destino = destino.trim();
-            if (!clientes.containsKey(destino)) {
-                salida.println("El usuario no está conectado.");
+
+            if (!usuarioExisteEnArchivo(destino)) {
+                salida.println("❌ Error: El usuario '" + destino + "' no existe.");
                 return;
             }
 
@@ -631,10 +658,7 @@ public class SerVerr {
             }
 
             String mensajeFinal = "[" + usuario + "]: " + mensaje.trim();
-
-           
             guardarMensaje(destino, mensajeFinal);
-
             salida.println("✅ Mensaje enviado a " + destino);
         }
         
