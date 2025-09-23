@@ -254,7 +254,19 @@ public class SerVerr {
         }
     }
 
-   
+    private static void mostrarUsuariosExpulsados() {
+        System.out.println("\n=== USUARIOS EXPULSADOS ===");
+        if (usuariosExpulsados.isEmpty()) {
+            System.out.println("No hay usuarios expulsados.");
+        } else {
+            int count = 1;
+            for (String usuario : usuariosExpulsados) {
+                System.out.println(count + ". " + usuario + " (puede registrarse nuevamente)");
+                count++;
+            }
+        }
+        System.out.println();
+    }
 
     private static void rehabilitarUsuario() {
         System.out.println("Esta funcionalidad no está disponible.");
@@ -269,7 +281,7 @@ public class SerVerr {
                 System.out.println("estado    - Ver estado del servidor");
                 System.out.println("clientes  - Ver clientes conectados");
                 System.out.println("usuarios  - Ver usuarios registrados");
-            
+                System.out.println("expulsados- Ver usuarios que han sido expulsados");
                 System.out.println("mensaje   - Enviar mensaje a un cliente");
                 System.out.println("expulsar  - Expulsar y eliminar a un cliente (puede re-registrarse)");
                 System.out.println("parar     - Cerrar servidor\n");
@@ -288,7 +300,7 @@ public class SerVerr {
                 System.out.println("\n=== ESTADO DEL SERVIDOR ===");
                 System.out.println("Puerto: " + PUERTO);
                 System.out.println("Clientes conectados: " + clientes.size());
-               
+                System.out.println("Usuarios expulsados: " + usuariosExpulsados.size());
                 System.out.println("Estado: ACTIVO\n");
                 break;
 
@@ -328,7 +340,10 @@ public class SerVerr {
                 System.out.println();
                 break;
 
-          
+            case "expulsados":
+                mostrarUsuariosExpulsados();
+                break;
+
             case "mensaje":
                 enviarMensajeACliente();
                 break;
@@ -457,7 +472,9 @@ public class SerVerr {
                             case "3":
                                 enviarMensajeUsuario(entrada);
                                 break;
-                           
+                            case "4":
+                                gestionarBloqueos(entrada);
+                                break;
                             case "5":
                                 salida.println("Cerrando sesión. Hasta luego " + usuario);
                                 logueado = false;
@@ -551,10 +568,132 @@ public class SerVerr {
                     System.out.println("Se eliminaron mensajes anteriores del usuario: " + u);
                 }
 
+                usuariosExpulsados.remove(u);
                 salida.println("Usuario registrado correctamente");
                 System.out.println("Nuevo usuario registrado: " + u);
             } else {
                 salida.println("Error registrando usuario");
+            }
+        }
+
+        private void gestionarBloqueos(BufferedReader entrada) throws IOException {
+            boolean gestionando = true;
+
+            while (gestionando) {
+                salida.println("=== GESTIONAR BLOQUEOS ===");
+                salida.println("1. Ver usuarios bloqueados");
+                salida.println("2. Bloquear usuario");
+                salida.println("3. Desbloquear usuario");
+                salida.println("4. Volver al menú principal");
+                salida.println("Seleccione opción (1-4):");
+
+                String opcion = entrada.readLine();
+                if (opcion == null) break;
+
+                switch (opcion.trim()) {
+                    case "1":
+                        mostrarUsuariosBloqueados();
+                        break;
+                    case "2":
+                        bloquearUsuario(entrada);
+                        break;
+                    case "3":
+                        desbloquearUsuario(entrada);
+                        break;
+                    case "4":
+                        gestionando = false;
+                        break;
+                    default:
+                        salida.println("Opción inválida. Seleccione 1, 2, 3 o 4.");
+                }
+            }
+        }
+
+        private void mostrarUsuariosBloqueados() {
+            Set<String> bloqueados = usuariosBloqueados.get(usuario);
+            salida.println("=== USUARIOS BLOQUEADOS ===");
+            if (bloqueados == null || bloqueados.isEmpty()) {
+                salida.println("No tienes usuarios bloqueados.");
+            } else {
+                int i = 1;
+                for (String usuarioBloqueado : bloqueados) {
+                    salida.println(i + ". " + usuarioBloqueado);
+                    i++;
+                }
+            }
+        }
+
+        private void bloquearUsuario(BufferedReader entrada) throws IOException {
+            List<String> todosUsuarios = obtenerTodosLosUsuarios();
+            List<String> usuariosDisponibles = new ArrayList<>();
+
+            for (String u : todosUsuarios) {
+                if (!u.equals(usuario)) {
+                    usuariosDisponibles.add(u);
+                }
+            }
+
+            if (usuariosDisponibles.isEmpty()) {
+                salida.println("No hay otros usuarios para bloquear.");
+                return;
+            }
+
+            salida.println("=== USUARIOS DISPONIBLES PARA BLOQUEAR ===");
+            for (int i = 0; i < usuariosDisponibles.size(); i++) {
+                String u = usuariosDisponibles.get(i);
+                String estado = clientes.containsKey(u) ? "(conectado)" : "(desconectado)";
+                salida.println((i + 1) + ". " + u + " " + estado);
+            }
+
+            salida.println("Ingrese el nombre del usuario a bloquear:");
+            String usuarioABloquear = entrada.readLine();
+            if (usuarioABloquear == null || usuarioABloquear.trim().isEmpty()) {
+                salida.println("Nombre de usuario vacío.");
+                return;
+            }
+
+            usuarioABloquear = usuarioABloquear.trim();
+
+            if (!usuarioExisteEnArchivo(usuarioABloquear)) {
+                salida.println("❌ Error: El usuario '" + usuarioABloquear + "' no existe.");
+                return;
+            }
+
+            if (usuarioABloquear.equals(usuario)) {
+                salida.println("No puedes bloquearte a ti mismo.");
+                return;
+            }
+
+            usuariosBloqueados.computeIfAbsent(usuario, k -> ConcurrentHashMap.newKeySet()).add(usuarioABloquear);
+            salida.println("✅ Usuario '" + usuarioABloquear + "' bloqueado correctamente.");
+        }
+
+        private void desbloquearUsuario(BufferedReader entrada) throws IOException {
+            Set<String> bloqueados = usuariosBloqueados.get(usuario);
+            if (bloqueados == null || bloqueados.isEmpty()) {
+                salida.println("No tienes usuarios bloqueados.");
+                return;
+            }
+
+            salida.println("=== USUARIOS BLOQUEADOS ===");
+            List<String> listaBloqueados = new ArrayList<>(bloqueados);
+            for (int i = 0; i < listaBloqueados.size(); i++) {
+                salida.println((i + 1) + ". " + listaBloqueados.get(i));
+            }
+
+            salida.println("Ingrese el nombre del usuario a desbloquear:");
+            String usuarioADesbloquear = entrada.readLine();
+            if (usuarioADesbloquear == null || usuarioADesbloquear.trim().isEmpty()) {
+                salida.println("Nombre de usuario vacío.");
+                return;
+            }
+
+            usuarioADesbloquear = usuarioADesbloquear.trim();
+
+            if (bloqueados.remove(usuarioADesbloquear)) {
+                salida.println("✅ Usuario '" + usuarioADesbloquear + "' desbloqueado correctamente.");
+            } else {
+                salida.println("❌ El usuario '" + usuarioADesbloquear + "' no estaba bloqueado.");
             }
         }
 
@@ -647,6 +786,23 @@ public class SerVerr {
 
             if (!usuarioExisteEnArchivo(destino)) {
                 salida.println("❌ Error: El usuario '" + destino + "' no existe.");
+                return;
+            }
+
+            if (destino.equals(usuario)) {
+                salida.println("No puedes enviarte un mensaje a ti mismo.");
+                return;
+            }
+
+            Set<String> bloqueados = usuariosBloqueados.get(usuario);
+            if (bloqueados != null && bloqueados.contains(destino)) {
+                salida.println("❌ No puedes enviar mensajes a '" + destino + "' porque lo tienes bloqueado.");
+                return;
+            }
+
+            Set<String> bloqueadosPorDestino = usuariosBloqueados.get(destino);
+            if (bloqueadosPorDestino != null && bloqueadosPorDestino.contains(usuario)) {
+                salida.println("❌ No puedes enviar mensajes a '" + destino + "' porque te ha bloqueado.");
                 return;
             }
 
