@@ -20,7 +20,6 @@ public class Cliente {
 
             while (conectado && !expulsado) {
                 if (!logueado) {
-                   
                     String linea;
                     while ((linea = entrada.readLine()) != null) {
                         if (linea.equals("DISCONNECT")) {
@@ -61,7 +60,6 @@ public class Cliente {
                             System.out.println(error);
                     }
                 } else {
-                  
                     mostrarMenuYProcesar(entrada, salida, teclado);
                 }
             }
@@ -82,14 +80,12 @@ public class Cliente {
         enMenu = true; 
         String linea;
         
-       
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
                 return;
             }
             
-           
             if (enMenu && linea.startsWith("🔔 NUEVO MENSAJE:")) {
                 System.out.println("\n" + linea);
                 String mensaje = entrada.readLine();
@@ -126,6 +122,11 @@ public class Cliente {
                 enMenu = true; 
                 break;
             case "4":
+                enMenu = false;
+                gestionarBloqueos(entrada, salida, teclado);
+                enMenu = true;
+                break;
+            case "5":
                 String sesionCerrada = entrada.readLine();
                 System.out.println(sesionCerrada);
                 logueado = false;
@@ -154,7 +155,6 @@ public class Cliente {
         String respuesta = entrada.readLine();
         System.out.println(respuesta);
         
-       
         if (respuesta.contains("eliminada") || respuesta.contains("expulsado")) {
             try {
                 String mensajeExtra1 = entrada.readLine();
@@ -203,20 +203,146 @@ public class Cliente {
         }
     }
 
-    private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    private static void gestionarBloqueos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         while (!expulsado) {
             String linea;
             
-          
+            // Leer menú de bloqueos
             while ((linea = entrada.readLine()) != null) {
                 if (linea.equals("DISCONNECT")) {
                     expulsado = true;
                     return;
                 }
                 
-              
-                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
+                System.out.println(linea);
+                if (linea.toLowerCase().contains("seleccione opción")) break;
+            }
+
+            if (expulsado) return;
+
+            System.out.print("> ");
+            String opcion = teclado.readLine();
+            if (opcion == null || expulsado) break;
+
+            salida.println(opcion);
+
+            switch (opcion.trim()) {
+                case "1":
+                    // Ver usuarios bloqueados
+                    mostrarRespuestaServidor(entrada);
+                    break;
+                case "2":
+                    // Bloquear usuario
+                    bloquearUsuario(entrada, salida, teclado);
+                    break;
+                case "3":
+                    // Desbloquear usuario
+                    desbloquearUsuario(entrada, salida, teclado);
+                    break;
+                case "4":
+                    // Volver al menú principal
+                    return;
+                default:
+                    String error = entrada.readLine();
+                    if (error != null) {
+                        System.out.println(error);
+                    }
+            }
+        }
+    }
+
+    private static void bloquearUsuario(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        String linea;
+        
+        // Leer lista de usuarios disponibles
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
+                return;
+            }
+            
+            System.out.println(linea);
+            if (linea.toLowerCase().contains("ingrese el nombre del usuario a bloquear")) break;
+        }
+
+        if (expulsado) return;
+
+        System.out.print("Usuario a bloquear: ");
+        String usuario = teclado.readLine();
+        if (usuario == null || expulsado) return;
+        
+        salida.println(usuario);
+
+        // Leer respuesta del servidor
+        String respuesta = entrada.readLine();
+        if (respuesta != null) {
+            System.out.println(respuesta);
+        }
+    }
+
+    private static void desbloquearUsuario(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        String linea;
+        
+        // Leer lista de usuarios bloqueados
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
+                return;
+            }
+            
+            System.out.println(linea);
+            if (linea.toLowerCase().contains("ingrese el nombre del usuario a desbloquear")) {
+                break;
+            }
+            if (linea.toLowerCase().contains("no tienes usuarios bloqueados")) {
+                return;
+            }
+        }
+
+        if (expulsado) return;
+
+        System.out.print("Usuario a desbloquear: ");
+        String usuario = teclado.readLine();
+        if (usuario == null || expulsado) return;
+        
+        salida.println(usuario);
+
+        // Leer respuesta del servidor
+        String respuesta = entrada.readLine();
+        if (respuesta != null) {
+            System.out.println(respuesta);
+        }
+    }
+
+    private static void mostrarRespuestaServidor(BufferedReader entrada) throws IOException {
+        String linea;
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
+                return;
+            }
+            
+            System.out.println(linea);
+            
+            // Terminar cuando encontremos una línea vacía o el final del mensaje
+            if (linea.trim().isEmpty() || 
+                linea.toLowerCase().contains("no tienes usuarios bloqueados")) {
+                break;
+            }
+        }
+    }
+
+    private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        while (!expulsado) {
+            String linea;
+            
+            while ((linea = entrada.readLine()) != null) {
+                if (linea.equals("DISCONNECT")) {
+                    expulsado = true;
+                    return;
+                }
                 
+                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
                     entrada.readLine();
                     continue; 
                 }
@@ -238,7 +364,6 @@ public class Cliente {
                 return;
             }
 
-        
             String respuesta = entrada.readLine();
             if (respuesta != null && !respuesta.equals("DISCONNECT")) {
                 System.out.println(respuesta);
@@ -252,16 +377,13 @@ public class Cliente {
         while (jugando && !expulsado) {
             String linea;
             
-        
             while ((linea = entrada.readLine()) != null) {
                 if (linea.equals("DISCONNECT")) {
                     expulsado = true;
                     return;
                 }
                 
-             
-                if (linea.startsWith("? NUEVO MENSAJE:")) {
-                 
+                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
                     entrada.readLine();
                     continue; 
                 }
@@ -297,7 +419,7 @@ public class Cliente {
         String linea;
         boolean hayUsuarios = false;
         
-     
+        // Leer lista de usuarios registrados
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
@@ -305,12 +427,12 @@ public class Cliente {
             }
             System.out.println(linea);
             
-       
-            if (linea.toLowerCase().contains("no hay otros usuarios conectados")) {
+            // Verificar si no hay usuarios
+            if (linea.toLowerCase().contains("no hay otros usuarios registrados")) {
                 return; 
             }
             
-           
+            // Detectar lista de usuarios
             if (linea.matches("^\\d+\\..*")) {
                 hayUsuarios = true;
             }
@@ -321,7 +443,6 @@ public class Cliente {
             }
         }
 
-      
         if (!hayUsuarios) {
             return;
         }
@@ -332,25 +453,27 @@ public class Cliente {
         
         salida.println(destinatario);
 
-       
+        // Leer respuesta del servidor
         linea = entrada.readLine();
         if (linea == null) return;
         System.out.println(linea);
         
-        if (linea.toLowerCase().contains("no") || 
-            linea.toLowerCase().contains("inválido") || 
-            linea.toLowerCase().contains("conectado")) {
+        // Verificar errores
+        if (linea.contains("❌") || 
+            linea.toLowerCase().contains("no existe") ||
+            linea.toLowerCase().contains("bloqueado") ||
+            linea.toLowerCase().contains("ti mismo")) {
             return;
         }
 
-      
+        // Si no hay error, continuar con el mensaje
         System.out.print("Mensaje > ");
         String mensaje = teclado.readLine();
         if (mensaje == null || expulsado) return;
         
         salida.println(mensaje);
 
-      
+        // Leer confirmación
         String confirmacion = entrada.readLine();
         if (confirmacion != null) {
             System.out.println(confirmacion);
