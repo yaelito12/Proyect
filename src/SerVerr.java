@@ -361,50 +361,60 @@ public class SerVerr {
         } 
     }
 
-    private static void enviarMensajeACliente() {
-        if (clientes.isEmpty()) {
-            System.out.println("No hay clientes conectados");
+   private static void enviarMensajeACliente() {
+    // Obtener todos los usuarios registrados en lugar de solo los conectados
+    List<String> todosUsuarios = obtenerTodosLosUsuarios();
+    
+    if (todosUsuarios.isEmpty()) {
+        System.out.println("No hay usuarios registrados");
+        return;
+    }
+
+    System.out.println("\n=== USUARIOS DISPONIBLES ===");
+    for (int i = 0; i < todosUsuarios.size(); i++) {
+        String usuario = todosUsuarios.get(i);
+        String estado = clientes.containsKey(usuario) ? "(conectado)" : "(desconectado)";
+        System.out.println((i + 1) + ". " + usuario + " " + estado);
+    }
+
+    try {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.print("Escribe el nombre del usuario: ");
+        String nombreUsuario = reader.readLine();
+
+        if (nombreUsuario == null || nombreUsuario.trim().isEmpty()) {
+            System.out.println("Nombre de usuario vacío");
             return;
         }
 
-        System.out.println("\n=== CLIENTES DISPONIBLES ===");
-        int i = 1;
-        for (String usuario : clientes.keySet()) {
-            System.out.println(i + ". " + usuario);
-            i++;
+     
+        if (!usuarioExisteEnArchivo(nombreUsuario.trim())) {
+            System.out.println("Usuario no encontrado");
+            return;
         }
 
-        try {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            System.out.print("Escribe el nombre del usuario: ");
-            String nombreUsuario = reader.readLine();
+        System.out.print("Escribe el mensaje: ");
+        String mensaje = reader.readLine();
 
-            if (nombreUsuario == null || nombreUsuario.trim().isEmpty()) {
-                System.out.println("Nombre de usuario vacío");
-                return;
-            }
-
-            ClienteInfo cliente = clientes.get(nombreUsuario.trim());
-            if (cliente == null) {
-                System.out.println("Usuario no encontrado o no está conectado");
-                return;
-            }
-
-            System.out.print("Escribe el mensaje: ");
-            String mensaje = reader.readLine();
-
-            if (mensaje == null || mensaje.trim().isEmpty()) {
-                System.out.println("Mensaje vacío");
-                return;
-            }
-
-            guardarMensaje(nombreUsuario.trim(), "[ADMIN]: " + mensaje.trim());
-            System.out.println("Mensaje enviado a " + nombreUsuario);
-
-        } catch (IOException e) {
-            System.err.println("Error enviando mensaje: " + e.getMessage());
+        if (mensaje == null || mensaje.trim().isEmpty()) {
+            System.out.println("Mensaje vacío");
+            return;
         }
+
+       
+        guardarMensaje(nombreUsuario.trim(), "[ADMIN]: " + mensaje.trim());
+        
+      
+        if (clientes.containsKey(nombreUsuario.trim())) {
+            System.out.println("Mensaje enviado en tiempo real a " + nombreUsuario + " (conectado)");
+        } else {
+            System.out.println("Mensaje guardado para " + nombreUsuario + " (desconectado)");
+        }
+
+    } catch (IOException e) {
+        System.err.println("Error enviando mensaje: " + e.getMessage());
     }
+}
 
     private static class ClienteInfo {
         String usuario;
@@ -697,60 +707,130 @@ public class SerVerr {
             }
         }
 
-        private void mostrarBandeja(BufferedReader entrada) throws IOException {
-            boolean enBandeja = true;
+   
+private void mostrarBandeja(BufferedReader entrada) throws IOException {
+    boolean enBandeja = true;
+    int paginaActual = 0;
+    final int MENSAJES_POR_PAGINA = 5;
 
-            while (enBandeja) {
-                List<String> mensajes = cargarMensajes(usuario);
+    while (enBandeja) {
+        List<String> mensajes = cargarMensajes(usuario);
 
-                salida.println("╔════════════════════════════════╗");
-                salida.println("║        BANDEJA DE ENTRADA      ║");
-                salida.println("╚════════════════════════════════╝");
+        salida.println("╔════════════════════════════════╗");
+        salida.println("║        BANDEJA DE ENTRADA      ║");
+        salida.println("╚════════════════════════════════╝");
 
-                if (mensajes.isEmpty()) {
-                    salida.println("📭 No hay mensajes nuevos.");
-                } else {
-                    salida.println("📬 Mensajes:");
-                    for (int i = 0; i < mensajes.size(); i++) {
-                        salida.println((i + 1) + ". " + mensajes.get(i));
-                    }
-                }
-
-                salida.println("\nOpciones:");
-                salida.println(" - escribir 'actualizar' para refrescar la bandeja");
-                salida.println(" - escribir 'eliminar <número>' para borrar un mensaje");
-                salida.println(" - escribir 'salir' para volver al menú principal");
-                salida.println(" - escribir 'menu' para ir al menú principal");
-
-                String comando = entrada.readLine();
-                if (comando == null) break;
-
-                if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
-                    enBandeja = false;
-                } else if (comando.trim().equalsIgnoreCase("actualizar")) {
-                    salida.println("Bandeja actualizada...");
-                } else if (comando.toLowerCase().startsWith("eliminar")) {
-                    try {
-                        String[] partes = comando.split(" ");
-                        if (partes.length < 2) {
-                            salida.println("Uso: eliminar <número>");
-                            continue;
-                        }
-                        int index = Integer.parseInt(partes[1]) - 1;
-                        if (eliminarMensaje(usuario, index)) {
-                            salida.println("Mensaje eliminado.");
-                        } else {
-                            salida.println("Índice inválido o error al eliminar.");
-                        }
-                    } catch (NumberFormatException e) {
-                        salida.println("Uso: eliminar <número>");
-                    }
-                } else {
-                    salida.println("Comando no reconocido.");
-                }
+        if (mensajes.isEmpty()) {
+            salida.println("📭 No hay mensajes nuevos.");
+        } else {
+            int totalPaginas = (int) Math.ceil((double) mensajes.size() / MENSAJES_POR_PAGINA);
+            
+            // Validar que la página actual esté en rango
+            if (paginaActual >= totalPaginas) {
+                paginaActual = totalPaginas - 1;
             }
+            if (paginaActual < 0) {
+                paginaActual = 0;
+            }
+
+            int inicio = paginaActual * MENSAJES_POR_PAGINA;
+            int fin = Math.min(inicio + MENSAJES_POR_PAGINA, mensajes.size());
+
+            salida.println("📬 Mensajes (Página " + (paginaActual + 1) + " de " + totalPaginas + "):");
+            
+            for (int i = inicio; i < fin; i++) {
+                salida.println((i + 1) + ". " + mensajes.get(i));
+            }
+
+            salida.println("\nNavegación:");
+            if (paginaActual > 0) {
+                salida.println(" - escribir 'anterior' para página anterior");
+            }
+            if (paginaActual < totalPaginas - 1) {
+                salida.println(" - escribir 'siguiente' para página siguiente");
+            }
+            salida.println(" - escribir 'pagina <número>' para ir a una página específica");
         }
 
+        salida.println("\nOpciones:");
+        salida.println(" - escribir 'actualizar' para refrescar la bandeja");
+        salida.println(" - escribir 'eliminar <número>' para borrar un mensaje");
+        salida.println(" - escribir 'salir' para volver al menú principal");
+        salida.println(" - escribir 'menu' para ir al menú principal");
+
+        String comando = entrada.readLine();
+        if (comando == null) break;
+
+        comando = comando.trim().toLowerCase();
+
+        if (comando.equalsIgnoreCase("salir") || comando.equalsIgnoreCase("menu")) {
+            enBandeja = false;
+        } else if (comando.equalsIgnoreCase("actualizar")) {
+            salida.println("Bandeja actualizada...");
+            paginaActual = 0; // Reiniciar a la primera página al actualizar
+        } else if (comando.equalsIgnoreCase("siguiente")) {
+            List<String> mensajesActuales = cargarMensajes(usuario);
+            int totalPaginas = (int) Math.ceil((double) mensajesActuales.size() / MENSAJES_POR_PAGINA);
+            if (paginaActual < totalPaginas - 1) {
+                paginaActual++;
+                salida.println("Avanzando a página " + (paginaActual + 1));
+            } else {
+                salida.println("Ya estás en la última página.");
+            }
+        } else if (comando.equalsIgnoreCase("anterior")) {
+            if (paginaActual > 0) {
+                paginaActual--;
+                salida.println("Retrocediendo a página " + (paginaActual + 1));
+            } else {
+                salida.println("Ya estás en la primera página.");
+            }
+        } else if (comando.startsWith("pagina ")) {
+            try {
+                String[] partes = comando.split(" ");
+                if (partes.length >= 2) {
+                    int numeroPagina = Integer.parseInt(partes[1]) - 1; // Convertir a índice base 0
+                    List<String> mensajesActuales = cargarMensajes(usuario);
+                    int totalPaginas = (int) Math.ceil((double) mensajesActuales.size() / MENSAJES_POR_PAGINA);
+                    
+                    if (numeroPagina >= 0 && numeroPagina < totalPaginas) {
+                        paginaActual = numeroPagina;
+                        salida.println("Navegando a página " + (paginaActual + 1));
+                    } else {
+                        salida.println("Página inválida. Rango válido: 1 a " + totalPaginas);
+                    }
+                } else {
+                    salida.println("Uso: pagina <número>");
+                }
+            } catch (NumberFormatException e) {
+                salida.println("Uso: pagina <número>");
+            }
+        } else if (comando.startsWith("eliminar")) {
+            try {
+                String[] partes = comando.split(" ");
+                if (partes.length < 2) {
+                    salida.println("Uso: eliminar <número>");
+                    continue;
+                }
+                int index = Integer.parseInt(partes[1]) - 1;
+                if (eliminarMensaje(usuario, index)) {
+                    salida.println("Mensaje eliminado.");
+                    // Recalcular página después de eliminar
+                    List<String> mensajesActualizados = cargarMensajes(usuario);
+                    int totalPaginas = (int) Math.ceil((double) mensajesActualizados.size() / MENSAJES_POR_PAGINA);
+                    if (paginaActual >= totalPaginas && totalPaginas > 0) {
+                        paginaActual = totalPaginas - 1;
+                    }
+                } else {
+                    salida.println("Índice inválido o error al eliminar.");
+                }
+            } catch (NumberFormatException e) {
+                salida.println("Uso: eliminar <número>");
+            }
+        } else {
+            salida.println("Comando no reconocido.");
+        }
+    }
+}
         private void enviarMensajeUsuario(BufferedReader entrada) throws IOException {
             salida.println("=== USUARIOS REGISTRADOS ===");
             List<String> todosUsuarios = obtenerTodosLosUsuarios();
