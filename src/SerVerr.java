@@ -273,96 +273,154 @@ public class SerVerr {
         System.out.println("Los usuarios expulsados pueden registrarse nuevamente automáticamente.");
     }
   
-    private static void procesarComando(String comando) {
-        switch (comando.toLowerCase()) {
-            case "ayuda":
-                System.out.println("\n=== COMANDOS DEL SERVIDOR ===");
-                System.out.println("ayuda     - Ver comandos");
-                System.out.println("estado    - Ver estado del servidor");
-                System.out.println("clientes  - Ver clientes conectados");
-                System.out.println("usuarios  - Ver usuarios registrados");
-                System.out.println("expulsados- Ver usuarios que han sido expulsados");
-                System.out.println("mensaje   - Enviar mensaje a un cliente");
-                System.out.println("expulsar  - Expulsar y eliminar a un cliente (puede re-registrarse)");
-                System.out.println("parar     - Cerrar servidor\n");
-                break;
-
-            case "parar":
-                System.out.println("Cerrando servidor...");
-                for (ClienteInfo c : clientes.values()) {
-                    c.salida.println("El servidor se ha cerrado.");
-                }
-                pool.shutdownNow();
-                System.exit(0);
-                break;
-
-            case "estado":
-                System.out.println("\n=== ESTADO DEL SERVIDOR ===");
-                System.out.println("Puerto: " + PUERTO);
-                System.out.println("Clientes conectados: " + clientes.size());
-                System.out.println("Usuarios expulsados: " + usuariosExpulsados.size());
-                System.out.println("Estado: ACTIVO\n");
-                break;
-
-            case "clientes":
-                System.out.println("\n=== CLIENTES CONECTADOS ===");
-                if (clientes.isEmpty()) {
-                    System.out.println("No hay clientes conectados");
-                } else {
-                    int i = 1;
-                    for (ClienteInfo cliente : clientes.values()) {
-                        System.out.println(i + ". " + cliente.usuario);
-                        i++;
-                    }
-                }
-                System.out.println();
-                break;
-
-            case "usuarios":
-                System.out.println("\n=== USUARIOS REGISTRADOS ===");
-                try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
-                    String linea;
-                    int count = 0;
-                    while ((linea = br.readLine()) != null) {
-                        String[] partes = linea.split(":");
-                        if (partes.length >= 1) {
-                            count++;
-                            String estado = clientes.containsKey(partes[0]) ? "(conectado)" : "(desconectado)";
-                            System.out.println(count + ". " + partes[0] + " " + estado);
-                        }
-                    }
-                    if (count == 0) {
-                        System.out.println("No hay usuarios registrados");
-                    }
-                } catch (IOException e) {
-                    System.out.println("No hay usuarios registrados");
-                }
-                System.out.println();
-                break;
-
-            case "expulsados":
-                mostrarUsuariosExpulsados();
-                break;
-
-            case "mensaje":
-                enviarMensajeACliente();
-                break;
-               
-            case "expulsar":
-                expulsarCliente();
-                break;
-
-            case "rehabilitar":
-                rehabilitarUsuario();
-                break;
+ 
+private static void procesarComando(String comando) {
+    // Verificar si es un comando de envío directo (formato: <usuario> <mensaje>)
+    if (!comando.toLowerCase().equals("mensaje") && 
+        !comando.toLowerCase().equals("ayuda") && 
+        !comando.toLowerCase().equals("estado") && 
+        !comando.toLowerCase().equals("clientes") && 
+        !comando.toLowerCase().equals("usuarios") && 
+        !comando.toLowerCase().equals("expulsados") && 
+        !comando.toLowerCase().equals("expulsar") && 
+        !comando.toLowerCase().equals("rehabilitar") && 
+        !comando.toLowerCase().equals("parar") && 
+        comando.contains(" ")) {
         
-            default:
-                System.out.println("Comando no reconocido. Escribe 'ayuda'");
-        } 
+     
+        enviarMensajeDirecto(comando);
+        return;
     }
 
-   private static void enviarMensajeACliente() {
-    // Obtener todos los usuarios registrados en lugar de solo los conectados
+    switch (comando.toLowerCase()) {
+        case "ayuda":
+            System.out.println("\n=== COMANDOS DEL SERVIDOR ===");
+            System.out.println("ayuda     - Ver comandos");
+            System.out.println("estado    - Ver estado del servidor");
+            System.out.println("clientes  - Ver clientes conectados");
+            System.out.println("usuarios  - Ver usuarios registrados");
+            System.out.println("expulsados- Ver usuarios que han sido expulsados");
+            System.out.println("mensaje   - Ver usuarios disponibles para enviar mensaje");
+            System.out.println("expulsar  - Expulsar y eliminar a un cliente (puede re-registrarse)");
+            System.out.println("parar     - Cerrar servidor\n");
+            break;
+
+        case "mensaje":
+            enviarMensajeACliente();
+            break;
+
+        case "parar":
+            System.out.println("Cerrando servidor...");
+            for (ClienteInfo c : clientes.values()) {
+                c.salida.println("El servidor se ha cerrado.");
+            }
+            pool.shutdownNow();
+            System.exit(0);
+            break;
+
+        case "estado":
+            System.out.println("\n=== ESTADO DEL SERVIDOR ===");
+            System.out.println("Puerto: " + PUERTO);
+            System.out.println("Clientes conectados: " + clientes.size());
+            System.out.println("Usuarios expulsados: " + usuariosExpulsados.size());
+            System.out.println("Estado: ACTIVO\n");
+            break;
+
+        case "clientes":
+            System.out.println("\n=== CLIENTES CONECTADOS ===");
+            if (clientes.isEmpty()) {
+                System.out.println("No hay clientes conectados");
+            } else {
+                int i = 1;
+                for (ClienteInfo cliente : clientes.values()) {
+                    System.out.println(i + ". " + cliente.usuario);
+                    i++;
+                }
+            }
+            System.out.println();
+            break;
+
+        case "usuarios":
+            System.out.println("\n=== USUARIOS REGISTRADOS ===");
+            try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
+                String linea;
+                int count = 0;
+                while ((linea = br.readLine()) != null) {
+                    String[] partes = linea.split(":");
+                    if (partes.length >= 1) {
+                        count++;
+                        String estado = clientes.containsKey(partes[0]) ? "(conectado)" : "(desconectado)";
+                        System.out.println(count + ". " + partes[0] + " " + estado);
+                    }
+                }
+                if (count == 0) {
+                    System.out.println("No hay usuarios registrados");
+                }
+            } catch (IOException e) {
+                System.out.println("No hay usuarios registrados");
+            }
+            System.out.println();
+            break;
+
+        case "expulsados":
+            mostrarUsuariosExpulsados();
+            break;
+
+        case "expulsar":
+            expulsarCliente();
+            break;
+
+        case "rehabilitar":
+            rehabilitarUsuario();
+            break;
+
+        default:
+            System.out.println("Comando no reconocido. Escribe 'ayuda'");
+    }
+}
+  private static void enviarMensajeDirecto(String comandoCompleto) {
+    // Formato: <usuario> <mensaje>
+    String[] partes = comandoCompleto.split(" ", 2);
+    
+    if (partes.length < 2) {
+        System.out.println("Formato incorrecto. Uso: <usuario> <mensaje>");
+        System.out.println("Ejemplo: juan Hola, este es un mensaje del administrador");
+        return;
+    }
+    
+    String usuario = partes[0].trim();
+    String mensaje = partes[1].trim();
+    
+    if (usuario.isEmpty()) {
+        System.out.println("Nombre de usuario vacío");
+        return;
+    }
+    
+    if (mensaje.isEmpty()) {
+        System.out.println("Mensaje vacío");
+        return;
+    }
+    
+    // Verificar que el usuario existe
+    if (!usuarioExisteEnArchivo(usuario)) {
+        System.out.println("Error: El usuario '" + usuario + "' no existe");
+        return;
+    }
+    
+    // Enviar el mensaje
+    guardarMensaje(usuario, "[ADMIN]: " + mensaje);
+    
+    // Mostrar confirmación
+    if (clientes.containsKey(usuario)) {
+        System.out.println("✅ Mensaje enviado en tiempo real a '" + usuario + "' (conectado)");
+    } else {
+        System.out.println("✅ Mensaje guardado para '" + usuario + "' (desconectado)");
+    }
+}
+
+// Método para enviar mensajes mostrando usuarios primero
+private static void enviarMensajeACliente() {
+    // Obtener todos los usuarios registrados
     List<String> todosUsuarios = obtenerTodosLosUsuarios();
     
     if (todosUsuarios.isEmpty()) {
@@ -376,46 +434,11 @@ public class SerVerr {
         String estado = clientes.containsKey(usuario) ? "(conectado)" : "(desconectado)";
         System.out.println((i + 1) + ". " + usuario + " " + estado);
     }
-
-    try {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        System.out.print("Escribe el nombre del usuario: ");
-        String nombreUsuario = reader.readLine();
-
-        if (nombreUsuario == null || nombreUsuario.trim().isEmpty()) {
-            System.out.println("Nombre de usuario vacío");
-            return;
-        }
-
-     
-        if (!usuarioExisteEnArchivo(nombreUsuario.trim())) {
-            System.out.println("Usuario no encontrado");
-            return;
-        }
-
-        System.out.print("Escribe el mensaje: ");
-        String mensaje = reader.readLine();
-
-        if (mensaje == null || mensaje.trim().isEmpty()) {
-            System.out.println("Mensaje vacío");
-            return;
-        }
-
-       
-        guardarMensaje(nombreUsuario.trim(), "[ADMIN]: " + mensaje.trim());
-        
-      
-        if (clientes.containsKey(nombreUsuario.trim())) {
-            System.out.println("Mensaje enviado en tiempo real a " + nombreUsuario + " (conectado)");
-        } else {
-            System.out.println("Mensaje guardado para " + nombreUsuario + " (desconectado)");
-        }
-
-    } catch (IOException e) {
-        System.err.println("Error enviando mensaje: " + e.getMessage());
-    }
+    
+    System.out.println("\nPara enviar un mensaje, escribe:");
+    System.out.println("<nombre> <mensaje>");
+   
 }
-
     private static class ClienteInfo {
         String usuario;
         PrintWriter salida;
