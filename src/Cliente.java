@@ -333,43 +333,62 @@ public class Cliente {
     }
 
     private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        while (!expulsado) {
-            String linea;
-            
-            while ((linea = entrada.readLine()) != null) {
-                if (linea.equals("DISCONNECT")) {
-                    expulsado = true;
-                    return;
-                }
-                
-                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
-                    entrada.readLine();
-                    continue; 
-                }
-                
-                System.out.println(linea);
-                if (linea.toLowerCase().contains("escribir 'salir'") || 
-                    linea.toLowerCase().contains("escribir 'menu'")) break;
-            }
-
-            if (expulsado) return;
-
-            System.out.print("> ");
-            String comando = teclado.readLine();
-            if (comando == null || expulsado) break;
-
-            salida.println(comando);
-
-            if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
+    while (!expulsado) {
+        String linea;
+        
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
                 return;
             }
+            
+            if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
+                entrada.readLine();
+                continue; 
+            }
+            
+            System.out.println(linea);
+            
+            // Detectar cuando terminan las opciones
+            if (linea.toLowerCase().contains("escribir 'salir'") || 
+                linea.toLowerCase().contains("escribir 'menu'")) break;
+        }
 
+        if (expulsado) return;
+
+        System.out.print("> ");
+        String comando = teclado.readLine();
+        if (comando == null || expulsado) break;
+
+        salida.println(comando);
+
+        if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
+            return;
+        }
+
+        // Leer respuesta del servidor para comandos de navegación
+        if (comando.trim().toLowerCase().startsWith("siguiente") ||
+            comando.trim().toLowerCase().startsWith("anterior") ||
+            comando.trim().toLowerCase().startsWith("pagina") ||
+            comando.trim().toLowerCase().startsWith("actualizar")) {
+            
+            String respuesta = entrada.readLine();
+            if (respuesta != null && !respuesta.equals("DISCONNECT")) {
+                System.out.println(respuesta);
+            }
+        } else if (comando.trim().toLowerCase().startsWith("eliminar")) {
+            String respuesta = entrada.readLine();
+            if (respuesta != null && !respuesta.equals("DISCONNECT")) {
+                System.out.println(respuesta);
+            }
+        } else {
             String respuesta = entrada.readLine();
             if (respuesta != null && !respuesta.equals("DISCONNECT")) {
                 System.out.println(respuesta);
             }
         }
     }
+}
 
     private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         boolean jugando = true;
