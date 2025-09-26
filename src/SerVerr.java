@@ -1034,32 +1034,142 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
             return false;
         }
 
-        private void explorarArchivos(BufferedReader entrada) throws IOException {
+       private void explorarArchivos(BufferedReader entrada) throws IOException {
     boolean explorando = true;
     
     while (explorando) {
-        salida.println("=== EXPLORAR ARCHIVOS ===");
-        salida.println("1. Ver archivos de un usuario");
-        salida.println("2. Descargar archivo de un usuario");
-        salida.println("3. Volver al menú principal");
-        salida.println("Seleccione opción (1-3):");
+        // Mostrar usuarios conectados (excluyendo al usuario actual)
+        List<String> usuariosConectados = new ArrayList<>();
+        for (String u : clientes.keySet()) {
+            if (!u.equals(usuario)) {
+                usuariosConectados.add(u);
+            }
+        }
+        
+        if (usuariosConectados.isEmpty()) {
+            salida.println("No hay otros usuarios conectados para explorar archivos.");
+            salida.println("Presiona Enter para volver al menú principal...");
+            entrada.readLine();
+            return;
+        }
+        
+        salida.println("=== EXPLORAR ARCHIVOS DE USUARIOS ===");
+        salida.println("Usuarios conectados disponibles:");
+        for (int i = 0; i < usuariosConectados.size(); i++) {
+            salida.println((i + 1) + ". " + usuariosConectados.get(i));
+        }
+        salida.println("0. Volver al menú principal");
+        salida.println("Seleccione el número del usuario a explorar:");
+        
+        String opcion = entrada.readLine();
+        if (opcion == null) break;
+        
+        try {
+            int indice = Integer.parseInt(opcion.trim());
+            
+            if (indice == 0) {
+                explorando = false;
+            } else if (indice >= 1 && indice <= usuariosConectados.size()) {
+                String usuarioObjetivo = usuariosConectados.get(indice - 1);
+                explorarArchivosDeUsuario(entrada, usuarioObjetivo);
+            } else {
+                salida.println("Opción inválida. Seleccione un número válido.");
+                salida.println("Presiona Enter para continuar...");
+                entrada.readLine();
+            }
+        } catch (NumberFormatException e) {
+            salida.println("Por favor ingrese un número válido.");
+            salida.println("Presiona Enter para continuar...");
+            entrada.readLine();
+        }
+    }
+}
+
+private void explorarArchivosDeUsuario(BufferedReader entrada, String usuarioObjetivo) throws IOException {
+    ClienteInfo clienteObjetivo = clientes.get(usuarioObjetivo);
+    
+    // Solicitar lista de archivos al usuario objetivo
+    clienteObjetivo.salida.println("FILE_LIST_REQUEST:" + usuario);
+    
+    salida.println("Solicitando lista de archivos de " + usuarioObjetivo + "...");
+    salida.println("Esperando respuesta...");
+    
+    // Esperar un momento para la respuesta
+    try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+    
+    // Simular el proceso de exploración (en una implementación real, 
+    // esto requeriría un mecanismo de sincronización más sofisticado)
+    boolean explorandoUsuario = true;
+    
+    while (explorandoUsuario) {
+        salida.println("\n=== ARCHIVOS DE " + usuarioObjetivo.toUpperCase() + " ===");
+        salida.println("(La lista de archivos se muestra en tiempo real)");
+        salida.println("\nOpciones:");
+        salida.println("1. Solicitar archivo específico");
+        salida.println("2. Actualizar lista de archivos");  
+        salida.println("3. Volver a la lista de usuarios");
+        salida.println("Seleccione una opción (1-3):");
         
         String opcion = entrada.readLine();
         if (opcion == null) break;
         
         switch (opcion.trim()) {
             case "1":
-                listarArchivosUsuario(entrada);
+                solicitarArchivoEspecifico(entrada, usuarioObjetivo, clienteObjetivo);
                 break;
             case "2":
-                descargarArchivoUsuario(entrada);
+                clienteObjetivo.salida.println("FILE_LIST_REQUEST:" + usuario);
+                salida.println("Lista actualizada. Revisa tu bandeja de mensajes para ver los archivos disponibles.");
+                salida.println("Presiona Enter para continuar...");
+                entrada.readLine();
                 break;
             case "3":
-                explorando = false;
+                explorandoUsuario = false;
                 break;
             default:
                 salida.println("Opción inválida. Seleccione 1, 2 o 3.");
+                salida.println("Presiona Enter para continuar...");
+                entrada.readLine();
         }
+    }
+}
+
+private void solicitarArchivoEspecifico(BufferedReader entrada, String usuarioObjetivo, ClienteInfo clienteObjetivo) throws IOException {
+    salida.println("Ingrese el nombre exacto del archivo (con extensión .txt):");
+    salida.println("Ejemplo: documento.txt, notas.txt, etc.");
+    salida.print("Archivo: ");
+    
+    String nombreArchivo = entrada.readLine();
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("Nombre de archivo inválido.");
+        return;
+    }
+    
+    nombreArchivo = nombreArchivo.trim();
+    
+    if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+        salida.println("❌ Solo se pueden descargar archivos .txt");
+        salida.println("Agregando extensión .txt automáticamente...");
+        nombreArchivo += ".txt";
+    }
+    
+    // Confirmar descarga
+    salida.println("¿Confirma la descarga del archivo '" + nombreArchivo + "' de " + usuarioObjetivo + "? (s/n):");
+    String confirmacion = entrada.readLine();
+    
+    if (confirmacion != null && confirmacion.trim().toLowerCase().startsWith("s")) {
+        // Solicitar el archivo
+        clienteObjetivo.salida.println("FILE_TRANSFER_REQUEST:" + usuario + ":" + nombreArchivo);
+        
+        salida.println("✅ Solicitud enviada a " + usuarioObjetivo);
+        salida.println("El archivo se descargará automáticamente si está disponible.");
+        salida.println("Revisa tu directorio local para el archivo descargado.");
+        salida.println("Presiona Enter para continuar...");
+        entrada.readLine();
+    } else {
+        salida.println("Descarga cancelada.");
+        salida.println("Presiona Enter para continuar...");
+        entrada.readLine();
     }
 }
 
@@ -1106,7 +1216,60 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
 }
         
         
-        
+    private void descargarArchivoUsuario(BufferedReader entrada) throws IOException {
+    // Mostrar usuarios conectados
+    List<String> usuariosConectados = new ArrayList<>();
+    for (String u : clientes.keySet()) {
+        if (!u.equals(usuario)) {
+            usuariosConectados.add(u);
+        }
+    }
+    
+    if (usuariosConectados.isEmpty()) {
+        salida.println("No hay otros usuarios conectados.");
+        return;
+    }
+    
+    salida.println("=== USUARIOS CONECTADOS ===");
+    for (int i = 0; i < usuariosConectados.size(); i++) {
+        salida.println((i + 1) + ". " + usuariosConectados.get(i));
+    }
+    
+    salida.println("Ingrese el nombre del usuario:");
+    String usuarioObjetivo = entrada.readLine();
+    if (usuarioObjetivo == null || usuarioObjetivo.trim().isEmpty()) {
+        salida.println("Usuario inválido.");
+        return;
+    }
+    
+    usuarioObjetivo = usuarioObjetivo.trim();
+    
+    // Verificar que el usuario esté conectado
+    if (!clientes.containsKey(usuarioObjetivo)) {
+        salida.println("❌ El usuario '" + usuarioObjetivo + "' no está conectado.");
+        return;
+    }
+    
+    salida.println("Ingrese el nombre del archivo (con extensión .txt):");
+    String nombreArchivo = entrada.readLine();
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("Nombre de archivo inválido.");
+        return;
+    }
+    
+    nombreArchivo = nombreArchivo.trim();
+    if (!nombreArchivo.endsWith(".txt")) {
+        salida.println("❌ Solo se pueden descargar archivos .txt");
+        return;
+    }
+    
+    // Solicitar el archivo al cliente objetivo
+    ClienteInfo clienteObjetivo = clientes.get(usuarioObjetivo);
+    clienteObjetivo.salida.println("FILE_TRANSFER_REQUEST:" + usuario + ":" + nombreArchivo);
+    
+    salida.println("Solicitando archivo '" + nombreArchivo + "' a " + usuarioObjetivo + "...");
+    salida.println("El archivo se guardará en tu directorio si está disponible.");
+}    
         
         
         

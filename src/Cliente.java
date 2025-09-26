@@ -94,6 +94,29 @@ public class Cliente {
                 }
                 continue;
             }
+
+            if (linea.startsWith("FILE_LIST_REQUEST:")) {
+                String solicitante = linea.split(":", 2)[1];
+                manejarSolicitudListaArchivos(salida, solicitante);
+                continue;
+            }
+
+            if (linea.startsWith("FILE_TRANSFER_REQUEST:")) {
+                String[] partes = linea.split(":", 3);
+                String solicitante = partes[1];
+                String nombreArchivo = partes[2];
+                manejarSolicitudTransferencia(salida, solicitante, nombreArchivo);
+                continue;
+            }
+
+            if (linea.startsWith("FILE_CONTENT:")) {
+                String[] partes = linea.split(":", 4);
+                String remitente = partes[1];
+                String nombreArchivo = partes[2];
+                String contenido = partes[3];
+                guardarArchivoRecibido(nombreArchivo, contenido, remitente);
+                continue;
+            }
             
             System.out.println(linea);
             if (linea.toLowerCase().contains("seleccione opción")) break;
@@ -127,6 +150,11 @@ public class Cliente {
                 enMenu = true;
                 break;
             case "5":
+                enMenu = false;
+                explorarArchivos(entrada, salida, teclado);
+                enMenu = true;
+                break;
+            case "6": 
                 String sesionCerrada = entrada.readLine();
                 System.out.println(sesionCerrada);
                 logueado = false;
@@ -333,62 +361,62 @@ public class Cliente {
     }
 
     private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-    while (!expulsado) {
-        String linea;
-        
-        while ((linea = entrada.readLine()) != null) {
-            if (linea.equals("DISCONNECT")) {
-                expulsado = true;
+        while (!expulsado) {
+            String linea;
+            
+            while ((linea = entrada.readLine()) != null) {
+                if (linea.equals("DISCONNECT")) {
+                    expulsado = true;
+                    return;
+                }
+                
+                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
+                    entrada.readLine();
+                    continue; 
+                }
+                
+                System.out.println(linea);
+                
+                // Detectar cuando terminan las opciones
+                if (linea.toLowerCase().contains("escribir 'salir'") || 
+                    linea.toLowerCase().contains("escribir 'menu'")) break;
+            }
+
+            if (expulsado) return;
+
+            System.out.print("> ");
+            String comando = teclado.readLine();
+            if (comando == null || expulsado) break;
+
+            salida.println(comando);
+
+            if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
                 return;
             }
-            
-            if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
-                entrada.readLine();
-                continue; 
-            }
-            
-            System.out.println(linea);
-            
-            // Detectar cuando terminan las opciones
-            if (linea.toLowerCase().contains("escribir 'salir'") || 
-                linea.toLowerCase().contains("escribir 'menu'")) break;
-        }
 
-        if (expulsado) return;
-
-        System.out.print("> ");
-        String comando = teclado.readLine();
-        if (comando == null || expulsado) break;
-
-        salida.println(comando);
-
-        if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
-            return;
-        }
-
-        // Leer respuesta del servidor para comandos de navegación
-        if (comando.trim().toLowerCase().startsWith("siguiente") ||
-            comando.trim().toLowerCase().startsWith("anterior") ||
-            comando.trim().toLowerCase().startsWith("pagina") ||
-            comando.trim().toLowerCase().startsWith("actualizar")) {
-            
-            String respuesta = entrada.readLine();
-            if (respuesta != null && !respuesta.equals("DISCONNECT")) {
-                System.out.println(respuesta);
-            }
-        } else if (comando.trim().toLowerCase().startsWith("eliminar")) {
-            String respuesta = entrada.readLine();
-            if (respuesta != null && !respuesta.equals("DISCONNECT")) {
-                System.out.println(respuesta);
-            }
-        } else {
-            String respuesta = entrada.readLine();
-            if (respuesta != null && !respuesta.equals("DISCONNECT")) {
-                System.out.println(respuesta);
+            // Leer respuesta del servidor para comandos de navegación
+            if (comando.trim().toLowerCase().startsWith("siguiente") ||
+                comando.trim().toLowerCase().startsWith("anterior") ||
+                comando.trim().toLowerCase().startsWith("pagina") ||
+                comando.trim().toLowerCase().startsWith("actualizar")) {
+                
+                String respuesta = entrada.readLine();
+                if (respuesta != null && !respuesta.equals("DISCONNECT")) {
+                    System.out.println(respuesta);
+                }
+            } else if (comando.trim().toLowerCase().startsWith("eliminar")) {
+                String respuesta = entrada.readLine();
+                if (respuesta != null && !respuesta.equals("DISCONNECT")) {
+                    System.out.println(respuesta);
+                }
+            } else {
+                String respuesta = entrada.readLine();
+                if (respuesta != null && !respuesta.equals("DISCONNECT")) {
+                    System.out.println(respuesta);
+                }
             }
         }
     }
-}
 
     private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         boolean jugando = true;
@@ -485,13 +513,197 @@ public class Cliente {
             return;
         }
 
-       
         System.out.print("Mensaje > ");
         String mensaje = teclado.readLine();
         if (mensaje == null || expulsado) return;
         
         salida.println(mensaje);
 
+        String confirmacion = entrada.readLine();
+        if (confirmacion != null) {
+            System.out.println(confirmacion);
+        }
+    }
+    
+    private static void manejarSolicitudListaArchivos(PrintWriter salida, String solicitante) {
+        File directorio = new File(".");
+        File[] archivos = directorio.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
+        
+        StringBuilder lista = new StringBuilder();
+        lista.append("=== ARCHIVOS .TXT DISPONIBLES ===\n");
+        
+        if (archivos == null || archivos.length == 0) {
+            lista.append("No hay archivos .txt en el directorio.\n");
+        } else {
+            for (int i = 0; i < archivos.length; i++) {
+                lista.append((i + 1) + ". " + archivos[i].getName() + 
+                           " (" + archivos[i].length() + " bytes)\n");
+            }
+        }
+        
+        // Enviar respuesta a través del servidor
+        salida.println("SEND_FILE_LIST:" + solicitante + ":" + lista.toString());
+        System.out.println("\n📁 " + solicitante + " solicitó tu lista de archivos .txt");
+    }
+
+    private static void manejarSolicitudTransferencia(PrintWriter salida, String solicitante, String nombreArchivo) {
+        File archivo = new File(nombreArchivo);
+        
+        System.out.println("\n📤 " + solicitante + " solicita el archivo: " + nombreArchivo);
+        
+        if (!archivo.exists()) {
+            salida.println("SEND_ERROR:" + solicitante + ":El archivo '" + nombreArchivo + "' no existe.");
+            return;
+        }
+        
+        if (!archivo.isFile() || !nombreArchivo.toLowerCase().endsWith(".txt")) {
+            salida.println("SEND_ERROR:" + solicitante + ":Solo se pueden transferir archivos .txt");
+            return;
+        }
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+            StringBuilder contenido = new StringBuilder();
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                contenido.append(linea).append("\n");
+            }
+            
+            salida.println("SEND_FILE:" + solicitante + ":" + nombreArchivo + ":" + contenido.toString());
+            System.out.println("✅ Archivo '" + nombreArchivo + "' enviado a " + solicitante);
+            
+        } catch (IOException e) {
+            salida.println("SEND_ERROR:" + solicitante + ":Error leyendo el archivo: " + e.getMessage());
+            System.out.println("❌ Error enviando archivo: " + e.getMessage());
+        }
+    }
+
+    private static void guardarArchivoRecibido(String nombreArchivo, String contenido, String remitente) {
+        String nombreFinal = "recibido_de_" + remitente + "_" + nombreArchivo;
+        
+        try (PrintWriter pw = new PrintWriter(new FileWriter(nombreFinal))) {
+            pw.print(contenido);
+            System.out.println("\n📥 Archivo recibido de " + remitente + ": " + nombreFinal);
+        } catch (IOException e) {
+            System.out.println("\n❌ Error guardando archivo de " + remitente + ": " + e.getMessage());
+        }
+    }
+
+    private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        while (!expulsado) {
+            String linea;
+            
+            while ((linea = entrada.readLine()) != null) {
+                if (linea.equals("DISCONNECT")) {
+                    expulsado = true;
+                    return;
+                }
+                
+                System.out.println(linea);
+                if (linea.toLowerCase().contains("seleccione opción")) break;
+            }
+
+            if (expulsado) return;
+
+            System.out.print("> ");
+            String opcion = teclado.readLine();
+            if (opcion == null || expulsado) break;
+
+            salida.println(opcion);
+
+            switch (opcion.trim()) {
+                case "1":
+                    // Listar archivos
+                    procesarListadoArchivos(entrada, salida, teclado);
+                    break;
+                case "2":
+                    // Descargar archivo
+                    procesarDescargaArchivo(entrada, salida, teclado);
+                    break;
+                case "3":
+                    // Volver
+                    return;
+                default:
+                    String error = entrada.readLine();
+                    if (error != null) {
+                        System.out.println(error);
+                    }
+            }
+        }
+    }
+
+    private static void procesarListadoArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        String linea;
+        
+        // Leer lista de usuarios o mensaje
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
+                return;
+            }
+            
+            System.out.println(linea);
+            
+            if (linea.toLowerCase().contains("ingrese el nombre del usuario") ||
+                linea.toLowerCase().contains("no hay otros usuarios")) {
+                break;
+            }
+        }
+
+        if (expulsado || linea.toLowerCase().contains("no hay otros usuarios")) return;
+
+        System.out.print("Usuario: ");
+        String usuario = teclado.readLine();
+        if (usuario == null || expulsado) return;
+        
+        salida.println(usuario);
+
+        // Leer respuesta
+        String respuesta = entrada.readLine();
+        if (respuesta != null) {
+            System.out.println(respuesta);
+        }
+    }
+
+    private static void procesarDescargaArchivo(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+        String linea;
+        
+        // Leer lista de usuarios
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
+                return;
+            }
+            
+            System.out.println(linea);
+            
+            if (linea.toLowerCase().contains("ingrese el nombre del usuario") ||
+                linea.toLowerCase().contains("no hay otros usuarios")) {
+                break;
+            }
+        }
+
+        if (expulsado || linea.toLowerCase().contains("no hay otros usuarios")) return;
+
+        System.out.print("Usuario: ");
+        String usuario = teclado.readLine();
+        if (usuario == null || expulsado) return;
+        
+        salida.println(usuario);
+
+        // Leer respuesta sobre el usuario
+        linea = entrada.readLine();
+        if (linea == null) return;
+        System.out.println(linea);
+        
+        if (linea.contains("❌")) return;
+
+        System.out.print("Nombre del archivo: ");
+        String archivo = teclado.readLine();
+        if (archivo == null || expulsado) return;
+        
+        salida.println(archivo);
+
+        // Leer confirmación
         String confirmacion = entrada.readLine();
         if (confirmacion != null) {
             System.out.println(confirmacion);
