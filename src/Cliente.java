@@ -525,27 +525,62 @@ public class Cliente {
         }
     }
     
-    private static void manejarSolicitudListaArchivos(PrintWriter salida, String solicitante) {
-        File directorio = new File(".");
-        File[] archivos = directorio.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
+   private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    while (!expulsado) {
+        String linea;
         
-        StringBuilder lista = new StringBuilder();
-        lista.append("=== ARCHIVOS .TXT DISPONIBLES ===\n");
-        
-        if (archivos == null || archivos.length == 0) {
-            lista.append("No hay archivos .txt en el directorio.\n");
-        } else {
-            for (int i = 0; i < archivos.length; i++) {
-                lista.append((i + 1) + ". " + archivos[i].getName() + 
-                           " (" + archivos[i].length() + " bytes)\n");
+        // Leer el menú de exploración
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
+                return;
+            }
+            
+            System.out.println(linea);
+            
+            // Detectar diferentes tipos de prompts
+            if (linea.toLowerCase().contains("no hay otros usuarios conectados")) {
+                // Esperar el prompt de Enter y luego salir
+                System.out.print("");
+                String enter = teclado.readLine();
+                return;
+            }
+            
+            if (linea.toLowerCase().contains("seleccione el número del usuario") ||
+                linea.toLowerCase().contains("seleccione una opción") ||
+                linea.toLowerCase().contains("archivo:")) {
+                break;
             }
         }
-        
-        // Enviar respuesta a través del servidor
-        salida.println("SEND_FILE_LIST:" + solicitante + ":" + lista.toString());
-        System.out.println("\n📁 " + solicitante + " solicitó tu lista de archivos .txt");
-    }
 
+        if (expulsado) return;
+
+        System.out.print("> ");
+        String respuesta = teclado.readLine();
+        if (respuesta == null || expulsado) break;
+
+        salida.println(respuesta);
+
+        // Manejar diferentes flujos basados en la respuesta
+        if (respuesta.trim().equals("0")) {
+            // Volver al menú principal
+            return;
+        } else if (respuesta.trim().matches("\\d+")) {
+            // Seleccionó un usuario, continuar con el flujo de exploración
+            continue;
+        } else if (respuesta.trim().equals("3")) {
+            // Volver desde el menú de archivos de usuario
+            continue;
+        } else if (respuesta.trim().toLowerCase().startsWith("s") || 
+                  respuesta.trim().toLowerCase().startsWith("n")) {
+            // Confirmación de descarga
+            leerRespuestaServidor(entrada);
+        } else {
+            // Otras respuestas, leer respuesta del servidor
+            leerRespuestaServidor(entrada);
+        }
+    }
+}
     private static void manejarSolicitudTransferencia(PrintWriter salida, String solicitante, String nombreArchivo) {
         File archivo = new File(nombreArchivo);
         
