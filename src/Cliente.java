@@ -235,7 +235,6 @@ public class Cliente {
         while (!expulsado) {
             String linea;
             
-            // Leer menú de bloqueos
             while ((linea = entrada.readLine()) != null) {
                 if (linea.equals("DISCONNECT")) {
                     expulsado = true;
@@ -256,19 +255,15 @@ public class Cliente {
 
             switch (opcion.trim()) {
                 case "1":
-                    // Ver usuarios bloqueados
                     mostrarRespuestaServidor(entrada);
                     break;
                 case "2":
-                    // Bloquear usuario
                     bloquearUsuario(entrada, salida, teclado);
                     break;
                 case "3":
-                    // Desbloquear usuario
                     desbloquearUsuario(entrada, salida, teclado);
                     break;
                 case "4":
-                    // Volver al menú principal
                     return;
                 default:
                     String error = entrada.readLine();
@@ -282,7 +277,6 @@ public class Cliente {
     private static void bloquearUsuario(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         String linea;
         
-        // Leer lista de usuarios disponibles
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
@@ -301,7 +295,6 @@ public class Cliente {
         
         salida.println(usuario);
 
-        // Leer respuesta del servidor
         String respuesta = entrada.readLine();
         if (respuesta != null) {
             System.out.println(respuesta);
@@ -311,7 +304,6 @@ public class Cliente {
     private static void desbloquearUsuario(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         String linea;
         
-        // Leer lista de usuarios bloqueados
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
@@ -335,7 +327,6 @@ public class Cliente {
         
         salida.println(usuario);
 
-        // Leer respuesta del servidor
         String respuesta = entrada.readLine();
         if (respuesta != null) {
             System.out.println(respuesta);
@@ -352,7 +343,6 @@ public class Cliente {
             
             System.out.println(linea);
             
-            // Terminar cuando encontremos una línea vacía o el final del mensaje
             if (linea.trim().isEmpty() || 
                 linea.toLowerCase().contains("no tienes usuarios bloqueados")) {
                 break;
@@ -377,7 +367,6 @@ public class Cliente {
                 
                 System.out.println(linea);
                 
-                // Detectar cuando terminan las opciones
                 if (linea.toLowerCase().contains("escribir 'salir'") || 
                     linea.toLowerCase().contains("escribir 'menu'")) break;
             }
@@ -394,7 +383,6 @@ public class Cliente {
                 return;
             }
 
-            // Leer respuesta del servidor para comandos de navegación
             if (comando.trim().toLowerCase().startsWith("siguiente") ||
                 comando.trim().toLowerCase().startsWith("anterior") ||
                 comando.trim().toLowerCase().startsWith("pagina") ||
@@ -466,7 +454,6 @@ public class Cliente {
         String linea;
         boolean hayUsuarios = false;
         
-        // Leer lista de usuarios registrados
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
@@ -474,12 +461,10 @@ public class Cliente {
             }
             System.out.println(linea);
             
-            // Verificar si no hay usuarios
             if (linea.toLowerCase().contains("no hay otros usuarios registrados")) {
                 return; 
             }
             
-            // Detectar lista de usuarios
             if (linea.matches("^\\d+\\..*")) {
                 hayUsuarios = true;
             }
@@ -500,12 +485,10 @@ public class Cliente {
         
         salida.println(destinatario);
 
-        // Leer respuesta del servidor
         linea = entrada.readLine();
         if (linea == null) return;
         System.out.println(linea);
         
-        // Verificar errores
         if (linea.contains("❌") || 
             linea.toLowerCase().contains("no existe") ||
             linea.toLowerCase().contains("bloqueado") ||
@@ -524,104 +507,6 @@ public class Cliente {
             System.out.println(confirmacion);
         }
     }
-    
-   private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-    while (!expulsado) {
-        String linea;
-        
-        // Leer el menú de exploración
-        while ((linea = entrada.readLine()) != null) {
-            if (linea.equals("DISCONNECT")) {
-                expulsado = true;
-                return;
-            }
-            
-            System.out.println(linea);
-            
-            // Detectar diferentes tipos de prompts
-            if (linea.toLowerCase().contains("no hay otros usuarios conectados")) {
-                // Esperar el prompt de Enter y luego salir
-                System.out.print("");
-                String enter = teclado.readLine();
-                return;
-            }
-            
-            if (linea.toLowerCase().contains("seleccione el número del usuario") ||
-                linea.toLowerCase().contains("seleccione una opción") ||
-                linea.toLowerCase().contains("archivo:")) {
-                break;
-            }
-        }
-
-        if (expulsado) return;
-
-        System.out.print("> ");
-        String respuesta = teclado.readLine();
-        if (respuesta == null || expulsado) break;
-
-        salida.println(respuesta);
-
-        // Manejar diferentes flujos basados en la respuesta
-        if (respuesta.trim().equals("0")) {
-            // Volver al menú principal
-            return;
-        } else if (respuesta.trim().matches("\\d+")) {
-            // Seleccionó un usuario, continuar con el flujo de exploración
-            continue;
-        } else if (respuesta.trim().equals("3")) {
-            // Volver desde el menú de archivos de usuario
-            continue;
-        } else if (respuesta.trim().toLowerCase().startsWith("s") || 
-                  respuesta.trim().toLowerCase().startsWith("n")) {
-            // Confirmación de descarga
-            leerRespuestaServidor(entrada);
-        } else {
-            // Otras respuestas, leer respuesta del servidor
-            leerRespuestaServidor(entrada);
-        }
-    }
-}
-    private static void manejarSolicitudTransferencia(PrintWriter salida, String solicitante, String nombreArchivo) {
-        File archivo = new File(nombreArchivo);
-        
-        System.out.println("\n📤 " + solicitante + " solicita el archivo: " + nombreArchivo);
-        
-        if (!archivo.exists()) {
-            salida.println("SEND_ERROR:" + solicitante + ":El archivo '" + nombreArchivo + "' no existe.");
-            return;
-        }
-        
-        if (!archivo.isFile() || !nombreArchivo.toLowerCase().endsWith(".txt")) {
-            salida.println("SEND_ERROR:" + solicitante + ":Solo se pueden transferir archivos .txt");
-            return;
-        }
-        
-        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
-            StringBuilder contenido = new StringBuilder();
-            String linea;
-            while ((linea = br.readLine()) != null) {
-                contenido.append(linea).append("\n");
-            }
-            
-            salida.println("SEND_FILE:" + solicitante + ":" + nombreArchivo + ":" + contenido.toString());
-            System.out.println("✅ Archivo '" + nombreArchivo + "' enviado a " + solicitante);
-            
-        } catch (IOException e) {
-            salida.println("SEND_ERROR:" + solicitante + ":Error leyendo el archivo: " + e.getMessage());
-            System.out.println("❌ Error enviando archivo: " + e.getMessage());
-        }
-    }
-
-    private static void guardarArchivoRecibido(String nombreArchivo, String contenido, String remitente) {
-        String nombreFinal = "recibido_de_" + remitente + "_" + nombreArchivo;
-        
-        try (PrintWriter pw = new PrintWriter(new FileWriter(nombreFinal))) {
-            pw.print(contenido);
-            System.out.println("\n📥 Archivo recibido de " + remitente + ": " + nombreFinal);
-        } catch (IOException e) {
-            System.out.println("\n❌ Error guardando archivo de " + remitente + ": " + e.getMessage());
-        }
-    }
 
     private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         while (!expulsado) {
@@ -634,114 +519,183 @@ public class Cliente {
                 }
                 
                 System.out.println(linea);
-                if (linea.toLowerCase().contains("seleccione opción")) break;
+                
+                if (linea.toLowerCase().contains("no hay otros usuarios conectados")) {
+                    System.out.print("");
+                    String enter = teclado.readLine();
+                    return;
+                }
+                
+                if (linea.toLowerCase().contains("seleccione el número del usuario") ||
+                    linea.toLowerCase().contains("seleccione una opción") ||
+                    linea.toLowerCase().contains("archivo:")) {
+                    break;
+                }
             }
 
             if (expulsado) return;
 
             System.out.print("> ");
-            String opcion = teclado.readLine();
-            if (opcion == null || expulsado) break;
+            String respuesta = teclado.readLine();
+            if (respuesta == null || expulsado) break;
 
-            salida.println(opcion);
+            salida.println(respuesta);
 
-            switch (opcion.trim()) {
-                case "1":
-                    // Listar archivos
-                    procesarListadoArchivos(entrada, salida, teclado);
-                    break;
-                case "2":
-                    // Descargar archivo
-                    procesarDescargaArchivo(entrada, salida, teclado);
-                    break;
-                case "3":
-                    // Volver
-                    return;
-                default:
-                    String error = entrada.readLine();
-                    if (error != null) {
-                        System.out.println(error);
-                    }
+            if (respuesta.trim().equals("0")) {
+                return;
+            } else if (respuesta.trim().matches("\\d+")) {
+                continue;
+            } else if (respuesta.trim().equals("3")) {
+                continue;
+            } else if (respuesta.trim().toLowerCase().startsWith("s") || 
+                      respuesta.trim().toLowerCase().startsWith("n")) {
+                leerRespuestaServidor(entrada);
+            } else {
+                leerRespuestaServidor(entrada);
             }
         }
     }
 
-    private static void procesarListadoArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    private static void leerRespuestaServidor(BufferedReader entrada) throws IOException {
         String linea;
+        int lineasLeidas = 0;
         
-        // Leer lista de usuarios o mensaje
-        while ((linea = entrada.readLine()) != null) {
+        while ((linea = entrada.readLine()) != null && lineasLeidas < 10) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
                 return;
             }
             
             System.out.println(linea);
+            lineasLeidas++;
             
-            if (linea.toLowerCase().contains("ingrese el nombre del usuario") ||
-                linea.toLowerCase().contains("no hay otros usuarios")) {
+            if (linea.toLowerCase().contains("presiona enter para continuar") ||
+                linea.toLowerCase().contains("presiona enter para volver")) {
+                break;
+            }
+            
+            if (linea.trim().isEmpty() && lineasLeidas > 2) {
                 break;
             }
         }
-
-        if (expulsado || linea.toLowerCase().contains("no hay otros usuarios")) return;
-
-        System.out.print("Usuario: ");
-        String usuario = teclado.readLine();
-        if (usuario == null || expulsado) return;
+    }
+    
+    // MÉTODOS PARA MANEJO DE ARCHIVOS
+    private static void manejarSolicitudListaArchivos(PrintWriter salida, String solicitante) {
+        System.out.println("\n📁 " + solicitante + " está explorando tus archivos...");
         
-        salida.println(usuario);
+        File directorio = new File(".");
+        File[] archivos = directorio.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
+        
+        StringBuilder lista = new StringBuilder();
+        lista.append("=== ARCHIVOS DISPONIBLES ===\n");
+        
+        if (archivos == null || archivos.length == 0) {
+            lista.append("📭 No hay archivos .txt disponibles en este directorio.\n");
+        } else {
+            lista.append("📂 Archivos .txt encontrados:\n");
+            for (int i = 0; i < archivos.length; i++) {
+                long bytes = archivos[i].length();
+                String tamaño = bytes < 1024 ? bytes + " bytes" : 
+                              bytes < 1048576 ? (bytes/1024) + " KB" : 
+                              (bytes/1048576) + " MB";
+                
+                lista.append((i + 1) + ". 📄 " + archivos[i].getName() + 
+                            " (" + tamaño + ")\n");
+            }
+            lista.append("\nPara descargar un archivo, " + solicitante + " debe solicitar el nombre exacto.\n");
+        }
+        
+        guardarMensajeParaUsuario(salida, solicitante, lista.toString());
+        System.out.println("✅ Lista de archivos enviada a " + solicitante);
+    }
 
-        // Leer respuesta
-        String respuesta = entrada.readLine();
-        if (respuesta != null) {
-            System.out.println(respuesta);
+    private static void manejarSolicitudTransferencia(PrintWriter salida, String solicitante, String nombreArchivo) {
+        System.out.println("\n📤 " + solicitante + " solicita descargar: " + nombreArchivo);
+        
+        File archivo = new File(nombreArchivo);
+        
+        if (!archivo.exists()) {
+            enviarError(salida, solicitante, "❌ El archivo '" + nombreArchivo + "' no existe en mi directorio.");
+            System.out.println(" Archivo no encontrado: " + nombreArchivo);
+            return;
+        }
+        
+        if (!archivo.isFile()) {
+            enviarError(salida, solicitante, " '" + nombreArchivo + "' no es un archivo válido.");
+            System.out.println(" No es un archivo válido: " + nombreArchivo);
+            return;
+        }
+        
+        if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+            enviarError(salida, solicitante, " Solo se pueden transferir archivos .txt por seguridad.");
+            System.out.println(" Tipo de archivo no permitido: " + nombreArchivo);
+            return;
+        }
+        
+        if (archivo.length() > 1048576) {
+            enviarError(salida, solicitante, " El archivo es demasiado grande (máximo 1MB).");
+            System.out.println(" Archivo muy grande: " + nombreArchivo);
+            return;
+        }
+        
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+            StringBuilder contenido = new StringBuilder();
+            String linea;
+            int lineas = 0;
+            
+            while ((linea = br.readLine()) != null && lineas < 1000) {
+                contenido.append(linea).append("\n");
+                lineas++;
+            }
+            
+            salida.println("SEND_FILE:" + solicitante + ":" + nombreArchivo + ":" + contenido.toString());
+            System.out.println(" Archivo '" + nombreArchivo + "' enviado a " + solicitante + " (" + lineas + " líneas)");
+            
+        } catch (IOException e) {
+            enviarError(salida, solicitante, " Error al leer el archivo: " + e.getMessage());
+            System.out.println(" Error leyendo archivo " + nombreArchivo + ": " + e.getMessage());
         }
     }
 
-    private static void procesarDescargaArchivo(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        String linea;
-        
-        // Leer lista de usuarios
-        while ((linea = entrada.readLine()) != null) {
-            if (linea.equals("DISCONNECT")) {
-                expulsado = true;
-                return;
-            }
-            
-            System.out.println(linea);
-            
-            if (linea.toLowerCase().contains("ingrese el nombre del usuario") ||
-                linea.toLowerCase().contains("no hay otros usuarios")) {
-                break;
-            }
+    private static void guardarArchivoRecibido(String nombreArchivo, String contenido, String remitente) {
+        File directorioDescargas = new File("descargas");
+        if (!directorioDescargas.exists()) {
+            directorioDescargas.mkdirs();
         }
-
-        if (expulsado || linea.toLowerCase().contains("no hay otros usuarios")) return;
-
-        System.out.print("Usuario: ");
-        String usuario = teclado.readLine();
-        if (usuario == null || expulsado) return;
         
-        salida.println(usuario);
-
-        // Leer respuesta sobre el usuario
-        linea = entrada.readLine();
-        if (linea == null) return;
-        System.out.println(linea);
+        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+        String nombreFinal = "descargas/[" + timestamp + "]_" + remitente + "_" + nombreArchivo;
         
-        if (linea.contains("❌")) return;
-
-        System.out.print("Nombre del archivo: ");
-        String archivo = teclado.readLine();
-        if (archivo == null || expulsado) return;
-        
-        salida.println(archivo);
-
-        // Leer confirmación
-        String confirmacion = entrada.readLine();
-        if (confirmacion != null) {
-            System.out.println(confirmacion);
+        try (PrintWriter pw = new PrintWriter(new FileWriter(nombreFinal))) {
+            pw.print(contenido);
+            
+            File archivoGuardado = new File(nombreFinal);
+            long tamaño = archivoGuardado.length();
+            String tamañoStr = tamaño < 1024 ? tamaño + " bytes" : 
+                              tamaño < 1048576 ? (tamaño/1024) + " KB" : 
+                              (tamaño/1048576) + " MB";
+            
+            System.out.println("\n📥 ¡ARCHIVO DESCARGADO EXITOSAMENTE!");
+            System.out.println("   Remitente: " + remitente);
+            System.out.println("   Archivo original: " + nombreArchivo);
+            System.out.println("   Guardado como: " + nombreFinal);
+            System.out.println("   Tamaño: " + tamañoStr);
+            System.out.println("   ✅ Descarga completada");
+            
+        } catch (IOException e) {
+            System.out.println("\nERROR AL GUARDAR ARCHIVO");
+            System.out.println("   Remitente: " + remitente);
+            System.out.println("   Archivo: " + nombreArchivo);
+            System.out.println("   Error: " + e.getMessage());
         }
+    }
+    
+    private static void enviarError(PrintWriter salida, String destinatario, String mensaje) {
+        guardarMensajeParaUsuario(salida, destinatario, mensaje);
+    }
+
+    private static void guardarMensajeParaUsuario(PrintWriter salida, String destinatario, String mensaje) {
+        salida.println("SEND_MESSAGE:" + destinatario + ":" + mensaje);
     }
 }

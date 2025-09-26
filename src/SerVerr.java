@@ -1137,11 +1137,13 @@ private void explorarArchivosDeUsuario(BufferedReader entrada, String usuarioObj
 private void solicitarArchivoEspecifico(BufferedReader entrada, String usuarioObjetivo, ClienteInfo clienteObjetivo) throws IOException {
     salida.println("Ingrese el nombre exacto del archivo (con extensión .txt):");
     salida.println("Ejemplo: documento.txt, notas.txt, etc.");
-    salida.print("Archivo: ");
+    salida.println("Archivo:");
     
     String nombreArchivo = entrada.readLine();
     if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
         salida.println("Nombre de archivo inválido.");
+        salida.println("Presiona Enter para continuar...");
+        entrada.readLine();
         return;
     }
     
@@ -1172,7 +1174,6 @@ private void solicitarArchivoEspecifico(BufferedReader entrada, String usuarioOb
         entrada.readLine();
     }
 }
-
         private void listarArchivosUsuario(BufferedReader entrada) throws IOException {
     // Mostrar usuarios conectados
     List<String> usuariosConectados = new ArrayList<>();
