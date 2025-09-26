@@ -485,14 +485,13 @@ public class Cliente {
             return;
         }
 
-        // Si no hay error, continuar con el mensaje
+       
         System.out.print("Mensaje > ");
         String mensaje = teclado.readLine();
         if (mensaje == null || expulsado) return;
         
         salida.println(mensaje);
 
-        // Leer confirmación
         String confirmacion = entrada.readLine();
         if (confirmacion != null) {
             System.out.println(confirmacion);

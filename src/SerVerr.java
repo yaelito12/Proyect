@@ -17,8 +17,8 @@ public class SerVerr {
         archivo.getParentFile().mkdirs(); 
         try (PrintWriter pw = new PrintWriter(new FileWriter(archivo, true))) {
             pw.println(mensaje);
-        } catch (IOException e) {
-            System.err.println("Error guardando mensaje para " + usuario + ": " + e.getMessage());
+        } catch (IOException e) { 
+           System.err.println("Error guardando mensaje para " + usuario + ": " + e.getMessage());
         }
         
         ClienteInfo cliente = clientes.get(usuario);
@@ -508,12 +508,13 @@ private static void enviarMensajeACliente() {
                             case "4":
                                 gestionarBloqueos(entrada);
                                 break;
-                            case "5":
-                                salida.println("Cerrando sesión. Hasta luego " + usuario);
-                                logueado = false;
-                                break;
-                            default:
-                                salida.println("Opción inválida. Seleccione 1, 2, 3, 4 o 5.");
+                         case "5":
+    explorarArchivos(entrada);
+    break;
+case "6":
+    salida.println("Cerrando sesión. Hasta luego " + usuario);
+    logueado = false;
+    break;
                         }
                     }
                 }
@@ -537,16 +538,16 @@ private static void enviarMensajeACliente() {
             salida.println("Seleccione opción (1-3):");
         }
 
-        private void mostrarMenuPostLogin() {
-            salida.println("=== MENU PRINCIPAL ===");
-            salida.println("1. Bandeja de entrada");
-            salida.println("2. Jugar 'Adivina número'");
-            salida.println("3. Enviar mensaje a otro usuario");
-            salida.println("4. Gestionar bloqueos");
-            salida.println("5. Cerrar sesión");
-            salida.println("Seleccione opción (1-5):");
-        }
-
+     private void mostrarMenuPostLogin() {
+    salida.println("=== MENU PRINCIPAL ===");
+    salida.println("1. Bandeja de entrada");
+    salida.println("2. Jugar 'Adivina número'");
+    salida.println("3. Enviar mensaje a otro usuario");
+    salida.println("4. Gestionar bloqueos");
+    salida.println("5. Explorar archivos de otros usuarios");
+    salida.println("6. Cerrar sesión");
+    salida.println("Seleccione opción (1-6):");
+}
         private boolean login(BufferedReader entrada) throws IOException {
             salida.println("Ingrese usuario:");
             String u = entrada.readLine();
@@ -1033,6 +1034,83 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
             return false;
         }
 
+        private void explorarArchivos(BufferedReader entrada) throws IOException {
+    boolean explorando = true;
+    
+    while (explorando) {
+        salida.println("=== EXPLORAR ARCHIVOS ===");
+        salida.println("1. Ver archivos de un usuario");
+        salida.println("2. Descargar archivo de un usuario");
+        salida.println("3. Volver al menú principal");
+        salida.println("Seleccione opción (1-3):");
+        
+        String opcion = entrada.readLine();
+        if (opcion == null) break;
+        
+        switch (opcion.trim()) {
+            case "1":
+                listarArchivosUsuario(entrada);
+                break;
+            case "2":
+                descargarArchivoUsuario(entrada);
+                break;
+            case "3":
+                explorando = false;
+                break;
+            default:
+                salida.println("Opción inválida. Seleccione 1, 2 o 3.");
+        }
+    }
+}
+
+        private void listarArchivosUsuario(BufferedReader entrada) throws IOException {
+    // Mostrar usuarios conectados
+    List<String> usuariosConectados = new ArrayList<>();
+    for (String u : clientes.keySet()) {
+        if (!u.equals(usuario)) {
+            usuariosConectados.add(u);
+        }
+    }
+    
+    if (usuariosConectados.isEmpty()) {
+        salida.println("No hay otros usuarios conectados.");
+        return;
+    }
+    
+    salida.println("=== USUARIOS CONECTADOS ===");
+    for (int i = 0; i < usuariosConectados.size(); i++) {
+        salida.println((i + 1) + ". " + usuariosConectados.get(i));
+    }
+    
+    salida.println("Ingrese el nombre del usuario:");
+    String usuarioObjetivo = entrada.readLine();
+    if (usuarioObjetivo == null || usuarioObjetivo.trim().isEmpty()) {
+        salida.println("Usuario inválido.");
+        return;
+    }
+    
+    usuarioObjetivo = usuarioObjetivo.trim();
+    
+   
+    if (!clientes.containsKey(usuarioObjetivo)) {
+        salida.println("El usuario '" + usuarioObjetivo + "' no está conectado.");
+        return;
+    }
+    
+    
+    ClienteInfo clienteObjetivo = clientes.get(usuarioObjetivo);
+    clienteObjetivo.salida.println("FILE_LIST_REQUEST:" + usuario);
+    
+    salida.println("Solicitando lista de archivos a " + usuarioObjetivo + "...");
+    salida.println("La respuesta aparecerá en tu bandeja de entrada.");
+}
+        
+        
+        
+        
+        
+        
+        
         private String hashPassword(String password) {
             try {
                 MessageDigest md = MessageDigest.getInstance("SHA-256");
