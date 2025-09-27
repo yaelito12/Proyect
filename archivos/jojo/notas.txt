@@ -1,0 +1,18 @@
+=== MIS NOTAS PERSONALES ===
+Usuario: jojo
+
+📝 TAREAS PENDIENTES:
+- Completar proyecto de programación
+- Revisar mensajes importantes
+- Actualizar lista de contactos
+- Organizar archivos del sistema
+
+💡 IDEAS:
+- Implementar sistema de notificaciones
+- Mejorar interfaz de usuario
+- Añadir más funcionalidades
+
+📅 RECORDATORIOS:
+- Hacer backup semanal
+- Revisar logs del servidor
+- Actualizar documentación

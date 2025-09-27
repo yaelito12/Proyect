@@ -65,45 +65,45 @@ public class SerVerr {
     }
 
     // NUEVA FUNCIONALIDAD: Crear archivo de lista de archivos para cada usuario
-    private static void crearListaArchivos(String usuario) {
-        File directorioUsuario = new File("archivos/" + usuario);
-        File archivoLista = new File("listas/" + usuario + "_archivos.txt");
-        
-        // Crear directorios si no existen
-        directorioUsuario.mkdirs();
-        archivoLista.getParentFile().mkdirs();
-        
-        try (PrintWriter pw = new PrintWriter(new FileWriter(archivoLista))) {
-            pw.println("=== ARCHIVOS DE " + usuario.toUpperCase() + " ===");
-            
-            File[] archivos = directorioUsuario.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
-            
-            if (archivos == null || archivos.length == 0) {
-                pw.println("📭 No hay archivos .txt disponibles.");
-            } else {
-                pw.println("📂 Archivos .txt disponibles:");
-                for (int i = 0; i < archivos.length; i++) {
-                    long bytes = archivos[i].length();
-                    String tamaño = bytes < 1024 ? bytes + " bytes" : 
-                                  bytes < 1048576 ? (bytes/1024) + " KB" : 
-                                  (bytes/1048576) + " MB";
-                    
-                    pw.println((i + 1) + ". 📄 " + archivos[i].getName() + " (" + tamaño + ")");
-                }
-            }
-            pw.println("\nPara descargar un archivo, solicita el nombre exacto con extensión .txt");
-        } catch (IOException e) {
-            System.err.println("Error creando lista de archivos para " + usuario + ": " + e.getMessage());
-        }
-    }
+  private static void crearListaArchivos(String usuario) {
+    File directorioUsuario = new File("archivos/" + usuario);
+    File archivoLista = new File("listas/" + usuario + "_archivos.txt");
     
-    // NUEVA FUNCIONALIDAD: Solicitar autorización para acceso a archivos
-    private static void solicitarAutorizacionArchivos(String solicitante, String propietario) {
-        ClienteInfo clientePropietario = clientes.get(propietario);
-        if (clientePropietario != null) {
-            clientePropietario.salida.println("AUTHORIZATION_REQUEST:" + solicitante);
+    // Crear directorios si no existen
+    directorioUsuario.mkdirs();
+    archivoLista.getParentFile().mkdirs();
+    
+    try (PrintWriter pw = new PrintWriter(new FileWriter(archivoLista))) {
+        pw.println("=== ARCHIVOS DE " + usuario.toUpperCase() + " ===");
+        
+        File[] archivos = directorioUsuario.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
+        
+        if (archivos == null || archivos.length == 0) {
+            pw.println("📭 No hay archivos .txt disponibles.");
+        } else {
+            pw.println("📂 Archivos .txt disponibles:");
+            for (int i = 0; i < archivos.length; i++) {
+                long bytes = archivos[i].length();
+                String tamaño = bytes < 1024 ? bytes + " bytes" : 
+                              bytes < 1048576 ? (bytes/1024) + " KB" : 
+                              (bytes/1048576) + " MB";
+                
+                pw.println((i + 1) + ". 📄 " + archivos[i].getName() + " (" + tamaño + ")");
+            }
         }
+        pw.println("\nPara descargar un archivo, solicita el nombre exacto con extensión .txt");
+    } catch (IOException e) {
+        System.err.println("Error creando lista de archivos para " + usuario + ": " + e.getMessage());
     }
+}
+
+private static void solicitarAutorizacionArchivos(String solicitante, String propietario) {
+    ClienteInfo clientePropietario = clientes.get(propietario);
+    if (clientePropietario != null) {
+        clientePropietario.salida.println("AUTHORIZATION_REQUEST:" + solicitante);
+    }
+}
+
 
     private static boolean eliminarUsuarioCompleto(String usuario) {
         try {
@@ -580,7 +580,14 @@ private static void enviarMensajeACliente() {
                          case "5":
     explorarArchivos(entrada);
     break;
-case "6":
+    
+                        
+  case "6":  // NUEVA OPCIÓN
+        gestionarMisArchivos(entrada);
+        break;
+    
+    
+case "7": 
     salida.println("Cerrando sesión. Hasta luego " + usuario);
     logueado = false;
     break;
@@ -614,29 +621,36 @@ case "6":
     salida.println("3. Enviar mensaje a otro usuario");
     salida.println("4. Gestionar bloqueos");
     salida.println("5. Explorar archivos de otros usuarios");
-    salida.println("6. Cerrar sesión");
-    salida.println("Seleccione opción (1-6):");
+    salida.println("6. Gestionar mis archivos");
+    salida.println("7. Cerrar sesión");
+    salida.println("Seleccione opción (1-7):");
+
 }
-        private boolean login(BufferedReader entrada) throws IOException {
-            salida.println("Ingrese usuario:");
-            String u = entrada.readLine();
-            if (u == null) return false;
+      private boolean login(BufferedReader entrada) throws IOException {
+    salida.println("Ingrese usuario:");
+    String u = entrada.readLine();
+    if (u == null) return false;
 
-            salida.println("Ingrese contraseña:");
-            String p = entrada.readLine();
-            if (p == null) return false;
+    salida.println("Ingrese contraseña:");
+    String p = entrada.readLine();
+    if (p == null) return false;
 
-            if (verificarLogin(u.trim(), hashPassword(p))) {
-                usuario = u.trim();
-                clientes.put(usuario, new ClienteInfo(usuario, salida, socket));
-                salida.println("Bienvenido " + usuario);
-                System.out.println("Login exitoso: " + usuario);
-                return true;
-            } else {
-                salida.println("Usuario o contraseña incorrectos");
-                return false;
-            }
-        }
+    if (verificarLogin(u.trim(), hashPassword(p))) {
+        usuario = u.trim();
+        clientes.put(usuario, new ClienteInfo(usuario, salida, socket));
+        salida.println("Bienvenido " + usuario);
+        System.out.println("Login exitoso: " + usuario);
+        
+        // Crear archivos de ejemplo si no existen
+        crearArchivosEjemplo(usuario);
+        // Crear lista de archivos al loguearse
+        crearListaArchivos(usuario);
+        return true;
+    } else {
+        salida.println("Usuario o contraseña incorrectos");
+        return false;
+    }
+}
         
         private void registro(BufferedReader entrada) throws IOException {
             salida.println("Ingrese nuevo usuario:");
@@ -664,25 +678,24 @@ case "6":
                 return;
             }
  
-            if (guardarUsuario(u, hashPassword(p))) {
-                File archivoMensajes = new File("mensajes/" + u + ".txt");
-                if (archivoMensajes.exists()) {
-                    archivoMensajes.delete();
-                    System.out.println("Se eliminaron mensajes anteriores del usuario: " + u);
-                }
+          if (guardarUsuario(u, hashPassword(p))) {
+    File archivoMensajes = new File("mensajes/" + u + ".txt");
+    if (archivoMensajes.exists()) {
+        archivoMensajes.delete();
+        System.out.println("Se eliminaron mensajes anteriores del usuario: " + u);
+    }
 
-                usuariosExpulsados.remove(u);
-                
-                // Crear directorio de archivos para el nuevo usuario
-                new File("archivos/" + u).mkdirs();
-                new File("listas").mkdirs();
-                
-                salida.println("Usuario registrado correctamente");
-                System.out.println("Nuevo usuario registrado: " + u);
-            } else {
-                salida.println("Error registrando usuario");
-            }
-        }
+    usuariosExpulsados.remove(u);
+    
+    // Crear archivos de ejemplo para el nuevo usuario
+    crearArchivosEjemplo(u);
+    new File("listas").mkdirs();
+    
+    salida.println("Usuario registrado correctamente");
+    System.out.println("Nuevo usuario registrado: " + u);
+} else {
+    salida.println("Error registrando usuario");
+}}
 
         private void gestionarBloqueos(BufferedReader entrada) throws IOException {
             boolean gestionando = true;
@@ -776,7 +789,8 @@ case "6":
             salida.println("✅ Usuario '" + usuarioABloquear + "' bloqueado correctamente.");
         }
 
-  private void desbloquearUsuario(BufferedReader entrada) throws IOException {
+ 
+private void desbloquearUsuario(BufferedReader entrada) throws IOException {
             Set<String> bloqueados = usuariosBloqueados.get(usuario);
             if (bloqueados == null || bloqueados.isEmpty()) {
                 salida.println("No tienes usuarios bloqueados.");
@@ -806,7 +820,7 @@ case "6":
             }
         }
 
-        private void mostrarBandeja(BufferedReader entrada) throws IOException {
+      private void mostrarBandeja(BufferedReader entrada) throws IOException {
             boolean enBandeja = true;
             int paginaActual = 1;
             final int MENSAJES_POR_PAGINA = 10;
@@ -893,64 +907,72 @@ case "6":
             }
         }
 
-        private void juegoAdivinaNumero(BufferedReader entrada) throws IOException {
-            boolean jugando = true;
 
-            while (jugando) {
-                int numeroSecreto = (int) (Math.random() * 100) + 1;
-                int intentos = 0;
-                int maxIntentos = 7;
-                boolean adivinado = false;
+            private void juegoAdivinaNumero(BufferedReader entrada) throws IOException { 
+    boolean jugando = true;
 
-                salida.println("=== JUEGO: ADIVINA EL NÚMERO ===");
-                salida.println("🎯 He pensado un número entre 1 y 100");
-                salida.println("🎲 Tienes " + maxIntentos + " intentos para adivinarlo");
-                salida.println("💡 Escribe 'menu' para volver al menú principal\n");
+    while (jugando) {
+        int numeroSecreto = (int) (Math.random() * 10) + 1; // Genera un número entre 1 y 10
+        int intentos = 0;
+        int maxIntentos = 3; // Número máximo de intentos permitidos
+        boolean adivinado = false;
 
-                while (!adivinado && intentos < maxIntentos) {
-                    salida.println("Intento " + (intentos + 1) + "/" + maxIntentos);
-                    salida.println("Ingresa tu número:");
+        salida.println("=== JUEGO: ADIVINA EL NÚMERO ===");
+        salida.println("🎯 He pensado un número entre 1 y 10"); // Indica el rango del número secreto
+        salida.println("🎲 Tienes " + maxIntentos + " intentos para adivinarlo");
+        salida.println("💡 Escribe 'menu' para volver al menú principal\n");
 
-                    String respuesta = entrada.readLine();
-                    if (respuesta == null) return;
+        while (!adivinado && intentos < maxIntentos) {
+            salida.println("Intento " + (intentos + 1) + "/" + maxIntentos);
+            salida.println("Ingresa tu número:");
 
-                    if (respuesta.trim().equalsIgnoreCase("menu")) {
-                        return;
-                    }
+            String respuesta = entrada.readLine();
+            if (respuesta == null) return;
 
-                    try {
-                        int numero = Integer.parseInt(respuesta.trim());
-                        intentos++;
+            if (respuesta.trim().equalsIgnoreCase("menu")) {
+                return; // Permite volver al menú principal
+            }
 
-                        if (numero == numeroSecreto) {
-                            salida.println("🎉 ¡FELICIDADES! Adivinaste el número " + numeroSecreto);
-                            salida.println("✨ Lo lograste en " + intentos + " intento(s)");
-                            adivinado = true;
-                        } else if (numero < numeroSecreto) {
-                            salida.println("📈 El número es MAYOR que " + numero);
-                        } else {
-                            salida.println("📉 El número es MENOR que " + numero);
-                        }
+            try {
+                int numero = Integer.parseInt(respuesta.trim());
+                
+                // Validar que el número esté en el rango permitido
+                if (numero < 1 || numero > 10) {
+                    salida.println("❌ Por favor ingresa un número entre 1 y 10");
+                    continue; // No cuenta como intento
+                }
+                
+                intentos++;
 
-                        if (!adivinado && intentos == maxIntentos) {
-                            salida.println("😔 Se acabaron los intentos. El número era: " + numeroSecreto);
-                        }
-
-                    } catch (NumberFormatException e) {
-                        salida.println("❌ Por favor ingresa un número válido");
-                    }
+                if (numero == numeroSecreto) {
+                    salida.println("🎉 ¡FELICIDADES! Adivinaste el número " + numeroSecreto);
+                    salida.println("✨ Lo lograste en " + intentos + " intento(s)");
+                    adivinado = true;
+                } else if (numero < numeroSecreto) {
+                    salida.println("📈 El número es MAYOR que " + numero);
+                } else {
+                    salida.println("📉 El número es MENOR que " + numero);
                 }
 
-                salida.println("¿Quieres jugar otra vez? (s/n) o 'menu' para volver:");
-                String continuar = entrada.readLine();
-                if (continuar == null || 
-                    continuar.trim().equalsIgnoreCase("n") || 
-                    continuar.trim().equalsIgnoreCase("menu")) {
-                    jugando = false;
+                if (!adivinado && intentos == maxIntentos) {
+                    salida.println("😔 Se acabaron los intentos. El número era: " + numeroSecreto);
                 }
+
+            } catch (NumberFormatException e) {
+                salida.println("❌ Por favor ingresa un número válido entre 1 y 10");
+                // No cuenta como intento si el valor ingresado no es un número
             }
         }
 
+        salida.println("¿Quieres jugar otra vez? (s/n) o 'menu' para volver:");
+        String continuar = entrada.readLine();
+        if (continuar == null || 
+            continuar.trim().equalsIgnoreCase("n") || 
+            continuar.trim().equalsIgnoreCase("menu")) {
+            jugando = false; // Finaliza el juego
+        }
+    }
+}
         private void enviarMensajeUsuario(BufferedReader entrada) throws IOException {
             List<String> todosUsuarios = obtenerTodosLosUsuarios();
             List<String> usuariosDisponibles = new ArrayList<>();
@@ -1016,178 +1038,480 @@ case "6":
             salida.println("✅ Mensaje enviado correctamente a " + destinatario);
         }
 
-        private void explorarArchivos(BufferedReader entrada) throws IOException {
-            // Obtener usuarios conectados (excluyendo al usuario actual)
-            List<String> usuariosConectados = new ArrayList<>();
-            for (String u : clientes.keySet()) {
-                if (!u.equals(usuario)) {
-                    usuariosConectados.add(u);
-                }
-            }
+    private void explorarArchivos(BufferedReader entrada) throws IOException {
+    // Obtener usuarios conectados (excluyendo al usuario actual)
+    List<String> usuariosConectados = new ArrayList<>();
+    for (String u : clientes.keySet()) {
+        if (!u.equals(usuario)) {
+            usuariosConectados.add(u);
+        }
+    }
 
-            if (usuariosConectados.isEmpty()) {
-                salida.println("❌ No hay otros usuarios conectados actualmente.");
-                salida.println("🔙 Regresando al menú principal...");
-                // Retornar directamente sin esperar input
-                return;
-            }
+    if (usuariosConectados.isEmpty()) {
+        salida.println("❌ No hay otros usuarios conectados actualmente.");
+        salida.println("🔙 Regresando al menú principal...");
+        return;
+    }
 
-            boolean explorando = true;
-            while (explorando) {
-                salida.println("=== EXPLORAR ARCHIVOS DE OTROS USUARIOS ===");
-                salida.println("👥 Usuarios conectados disponibles:");
+    boolean explorando = true;
+    while (explorando) {
+        salida.println("=== EXPLORAR ARCHIVOS DE OTROS USUARIOS ===");
+        salida.println("👥 Usuarios conectados disponibles:");
 
-                for (int i = 0; i < usuariosConectados.size(); i++) {
-                    salida.println((i + 1) + ". " + usuariosConectados.get(i));
-                }
-
-                salida.println("0. Volver al menú principal");
-                salida.println("Seleccione el número del usuario:");
-
-                String opcion = entrada.readLine();
-                if (opcion == null) break;
-
-                if (opcion.trim().equals("0")) {
-                    explorando = false;
-                    continue;
-                }
-
-                try {
-                    int index = Integer.parseInt(opcion.trim()) - 1;
-                    if (index >= 0 && index < usuariosConectados.size()) {
-                        String propietario = usuariosConectados.get(index);
-                        
-                        // Solicitar autorización (por ahora automática)
-                        // solicitarAutorizacionArchivos(usuario, propietario);
-                        
-                        mostrarArchivosUsuario(propietario, entrada);
-                    } else {
-                        salida.println("❌ Número fuera de rango");
-                        salida.println("Presiona Enter para continuar...");
-                        entrada.readLine();
-                    }
-                } catch (NumberFormatException e) {
-                    salida.println("❌ Por favor ingrese un número válido");
-                    salida.println("Presiona Enter para continuar...");
-                    entrada.readLine();
-                }
-            }
+        for (int i = 0; i < usuariosConectados.size(); i++) {
+            salida.println((i + 1) + ". " + usuariosConectados.get(i));
         }
 
-        private void mostrarArchivosUsuario(String propietario, BufferedReader entrada) throws IOException {
-            File archivoLista = new File("listas/" + propietario + "_archivos.txt");
-            
-            if (!archivoLista.exists()) {
-                crearListaArchivos(propietario);
-            }
+        salida.println("0. Volver al menú principal");
+        salida.println("Seleccione el número del usuario:");
 
-            // Mostrar la lista de archivos
+        String opcion = entrada.readLine();
+        if (opcion == null) break;
+
+        if (opcion.trim().equals("0")) {
+            salida.println("🔙 Regresando al menú principal...");
+            explorando = false;
+            return; // Salir completamente del método
+        }
+
+        try {
+            int index = Integer.parseInt(opcion.trim()) - 1;
+            if (index >= 0 && index < usuariosConectados.size()) {
+                String propietario = usuariosConectados.get(index);
+                
+                // Solicitar autorización (por ahora automática)
+                // solicitarAutorizacionArchivos(usuario, propietario);
+                
+                mostrarArchivosUsuario(propietario, entrada);
+                
+                // Después de mostrar archivos, volver a mostrar la lista de usuarios
+                // No salir del bucle aquí
+            } else {
+                salida.println("❌ Número fuera de rango");
+                salida.println("Presione Enter para continuar...");
+                entrada.readLine();
+            }
+        } catch (NumberFormatException e) {
+            salida.println("❌ Por favor ingrese un número válido");
+            salida.println("Presione Enter para continuar...");
+            entrada.readLine();
+        }
+    }
+}
+
+     private void mostrarArchivosUsuario(String propietario, BufferedReader entrada) throws IOException {
+    File archivoLista = new File("listas/" + propietario + "_archivos.txt");
+    
+    if (!archivoLista.exists()) {
+        crearListaArchivos(propietario);
+    }
+
+    // Mostrar la lista de archivos
+    try (BufferedReader br = new BufferedReader(new FileReader(archivoLista))) {
+        String linea;
+        salida.println("\n" + "=".repeat(50));
+        while ((linea = br.readLine()) != null) {
+            salida.println(linea);
+        }
+        salida.println("=".repeat(50));
+    } catch (IOException e) {
+        salida.println("❌ Error leyendo la lista de archivos de " + propietario);
+    }
+
+    boolean navegando = true;
+    while (navegando) {
+        salida.println("\n🔽 OPCIONES:");
+        salida.println("1. Descargar un archivo");
+        salida.println("2. Actualizar lista de archivos");
+        salida.println("0. Volver a la lista de usuarios");
+        salida.println("Seleccione una opción:");
+
+        String opcion = entrada.readLine();
+        if (opcion == null) break;
+
+        switch (opcion.trim()) {
+            case "0":
+                salida.println("🔙 Volviendo a la lista de usuarios...");
+                navegando = false;
+                return; // Volver al método explorarArchivos
+            case "1":
+                descargarArchivo(propietario, entrada);
+                break;
+            case "2":
+                crearListaArchivos(propietario);
+                salida.println("✅ Lista actualizada");
+                // Mostrar la lista actualizada
+                try (BufferedReader br = new BufferedReader(new FileReader(archivoLista))) {
+                    String linea;
+                    salida.println("\n" + "=".repeat(50));
+                    while ((linea = br.readLine()) != null) {
+                        salida.println(linea);
+                    }
+                    salida.println("=".repeat(50));
+                }
+                break;
+            default:
+                salida.println("❌ Opción inválida");
+        }
+    }
+}
+       private void descargarArchivo(String propietario, BufferedReader entrada) throws IOException {
+    salida.println("📎 Ingresa el nombre exacto del archivo (con extensión .txt):");
+    String nombreArchivo = entrada.readLine();
+    
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("❌ Nombre de archivo vacío");
+        return;
+    }
+
+    nombreArchivo = nombreArchivo.trim();
+    
+    if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+        salida.println("❌ Solo se pueden descargar archivos .txt");
+        return;
+    }
+
+    File archivo = new File("archivos/" + propietario + "/" + nombreArchivo);
+    
+    if (!archivo.exists()) {
+        salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
+        return;
+    }
+
+    salida.println("📄 Archivo encontrado: " + nombreArchivo);
+    salida.println("📊 Tamaño: " + archivo.length() + " bytes");
+    salida.println("¿Confirma la descarga? (s/n):");
+
+    String confirmacion = entrada.readLine();
+    if (confirmacion != null && confirmacion.trim().toLowerCase().startsWith("s")) {
+        // Simular descarga mostrando el contenido
+        salida.println("\n" + "=".repeat(60));
+        salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
+        salida.println("👤 PROPIETARIO: " + propietario);
+        salida.println("=".repeat(60));
+
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+            String linea;
+            int numeroLinea = 1;
+            while ((linea = br.readLine()) != null) {
+                salida.println(String.format("%3d | %s", numeroLinea, linea));
+                numeroLinea++;
+            }
+        } catch (IOException e) {
+            salida.println("❌ Error leyendo el archivo: " + e.getMessage());
+        }
+
+        salida.println("=".repeat(60));
+        salida.println("✅ Descarga completada");
+        salida.println("💾 En un sistema real, el archivo se guardaría en tu dispositivo");
+    } else {
+        salida.println("❌ Descarga cancelada");
+    }
+    
+    // Removed "Presiona Enter para continuar..." - now it flows back naturally
+}
+
+    private void gestionarMisArchivos(BufferedReader entrada) throws IOException {
+    boolean gestionando = true;
+
+    while (gestionando) {
+        // Crear lista actualizada de archivos
+        crearListaArchivos(usuario);
+        
+        // Mostrar archivos del usuario
+        File archivoLista = new File("listas/" + usuario + "_archivos.txt");
+        if (archivoLista.exists()) {
             try (BufferedReader br = new BufferedReader(new FileReader(archivoLista))) {
                 String linea;
-                salida.println("\n" + "=".repeat(50));
                 while ((linea = br.readLine()) != null) {
                     salida.println(linea);
                 }
-                salida.println("=".repeat(50));
-            } catch (IOException e) {
-                salida.println("❌ Error leyendo la lista de archivos de " + propietario);
             }
-
-            boolean navegando = true;
-            while (navegando) {
-                salida.println("\n🔽 OPCIONES:");
-                salida.println("1. Descargar un archivo");
-                salida.println("2. Actualizar lista de archivos");
-                salida.println("0. Volver a la lista de usuarios");
-                salida.println("Seleccione una opción:");
-
-                String opcion = entrada.readLine();
-                if (opcion == null) break;
-
-                switch (opcion.trim()) {
-                    case "0":
-                        navegando = false;
-                        break;
-                    case "1":
-                        descargarArchivo(propietario, entrada);
-                        break;
-                    case "2":
-                        crearListaArchivos(propietario);
-                        salida.println("✅ Lista actualizada");
-                        // Mostrar la lista actualizada
-                        try (BufferedReader br = new BufferedReader(new FileReader(archivoLista))) {
-                            String linea;
-                            salida.println("\n" + "=".repeat(50));
-                            while ((linea = br.readLine()) != null) {
-                                salida.println(linea);
-                            }
-                            salida.println("=".repeat(50));
-                        }
-                        break;
-                    default:
-                        salida.println("❌ Opción inválida");
-                }
-            }
+        } else {
+            salida.println("❌ No se pudo acceder a la lista de archivos");
         }
 
-        private void descargarArchivo(String propietario, BufferedReader entrada) throws IOException {
-            salida.println("📎 Ingresa el nombre exacto del archivo (con extensión .txt):");
-            String nombreArchivo = entrada.readLine();
-            
-            if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
-                salida.println("❌ Nombre de archivo vacío");
-                return;
-            }
+        salida.println("\n=== GESTIONAR MIS ARCHIVOS ===");
+        salida.println("1. Ver contenido de un archivo");
+        salida.println("2. Editar un archivo");
+        salida.println("3. Crear nuevo archivo");
+        salida.println("4. Eliminar un archivo");
+        salida.println("5. Actualizar lista");
+        salida.println("0. Volver al menú principal");
+        salida.println("Seleccione una opción:");
 
-            nombreArchivo = nombreArchivo.trim();
-            
-            if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
-                salida.println("❌ Solo se pueden descargar archivos .txt");
-                return;
-            }
+        String opcion = entrada.readLine();
+        if (opcion == null) break;
 
-            File archivo = new File("archivos/" + propietario + "/" + nombreArchivo);
-            
-            if (!archivo.exists()) {
-                salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
-                return;
-            }
-
-            salida.println("📄 Archivo encontrado: " + nombreArchivo);
-            salida.println("📊 Tamaño: " + archivo.length() + " bytes");
-            salida.println("¿Confirma la descarga? (s/n):");
-
-            String confirmacion = entrada.readLine();
-            if (confirmacion != null && confirmacion.trim().toLowerCase().startsWith("s")) {
-                // Simular descarga mostrando el contenido
-                salida.println("\n" + "=".repeat(60));
-                salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
-                salida.println("👤 PROPIETARIO: " + propietario);
-                salida.println("=".repeat(60));
-
-                try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
-                    String linea;
-                    int numeroLinea = 1;
-                    while ((linea = br.readLine()) != null) {
-                        salida.println(String.format("%3d | %s", numeroLinea, linea));
-                        numeroLinea++;
-                    }
-                } catch (IOException e) {
-                    salida.println("❌ Error leyendo el archivo: " + e.getMessage());
+        switch (opcion.trim()) {
+            case "0":
+                gestionando = false;
+                break;
+            case "1":
+                verArchivo(entrada);
+                // Leer respuesta del cliente
+                String respuestaVer = entrada.readLine();
+                if (respuestaVer != null && respuestaVer.trim().toLowerCase().equals("salir")) {
+                    gestionando = false;
                 }
-
-                salida.println("=".repeat(60));
-                salida.println("✅ Descarga completada");
-                salida.println("💾 En un sistema real, el archivo se guardaría en tu dispositivo");
-            } else {
-                salida.println("❌ Descarga cancelada");
-            }
-            
-            salida.println("Presiona Enter para continuar...");
-            entrada.readLine();
+                // Si es "volver" o cualquier otra cosa, continúa el bucle
+                break;
+            case "2":
+                editarArchivo(entrada);
+                // Leer respuesta del cliente
+                String respuestaEditar = entrada.readLine();
+                if (respuestaEditar != null && respuestaEditar.trim().toLowerCase().equals("salir")) {
+                    gestionando = false;
+                }
+                break;
+            case "3":
+                crearNuevoArchivo(entrada);
+                // Leer respuesta del cliente
+                String respuestaCrear = entrada.readLine();
+                if (respuestaCrear != null && respuestaCrear.trim().toLowerCase().equals("salir")) {
+                    gestionando = false;
+                }
+                break;
+            case "4":
+                eliminarArchivo(entrada);
+                // Leer respuesta del cliente
+                String respuestaEliminar = entrada.readLine();
+                if (respuestaEliminar != null && respuestaEliminar.trim().toLowerCase().equals("salir")) {
+                    gestionando = false;
+                }
+                break;
+            case "5":
+                salida.println("✅ Lista actualizada");
+                break;
+            default:
+                salida.println("❌ Opción inválida. Seleccione 0-5.");
+                break;
         }
+    }
+}
 
-        // Métodos auxiliares que faltan
+ private void verArchivo(BufferedReader entrada) throws IOException {
+    salida.println("📄 Ingresa el nombre del archivo (con extensión .txt):");
+    String nombreArchivo = entrada.readLine();
+    
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("❌ Nombre de archivo vacío");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    nombreArchivo = nombreArchivo.trim();
+    if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+        salida.println("❌ Solo se pueden gestionar archivos .txt");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    File archivo = new File("archivos/" + usuario + "/" + nombreArchivo);
+    if (!archivo.exists()) {
+        salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    salida.println("\n" + "=".repeat(60));
+    salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
+    salida.println("=".repeat(60));
+
+    try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+        String linea;
+        int numeroLinea = 1;
+        while ((linea = br.readLine()) != null) {
+            salida.println(String.format("%3d | %s", numeroLinea, linea));
+            numeroLinea++;
+        }
+    } catch (IOException e) {
+        salida.println("❌ Error leyendo el archivo: " + e.getMessage());
+    }
+
+    salida.println("=".repeat(60));
+    salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+}
+// MÉTODO CORREGIDO para editarArchivo
+private void editarArchivo(BufferedReader entrada) throws IOException {
+    salida.println("✏️ Ingresa el nombre del archivo a editar (con extensión .txt):");
+    String nombreArchivo = entrada.readLine();
+    
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("❌ Nombre de archivo vacío");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    nombreArchivo = nombreArchivo.trim();
+    if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+        salida.println("❌ Solo se pueden editar archivos .txt");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    File archivo = new File("archivos/" + usuario + "/" + nombreArchivo);
+    if (!archivo.exists()) {
+        salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
+        salida.println("¿Quieres crearlo? (s/n):");
+        String crear = entrada.readLine();
+        if (crear == null || !crear.trim().toLowerCase().startsWith("s")) {
+            salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+            return;
+        }
+    }
+
+    // Mostrar contenido actual si existe
+    if (archivo.exists()) {
+        salida.println("\n📖 CONTENIDO ACTUAL:");
+        salida.println("-".repeat(40));
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+            String linea;
+            int numeroLinea = 1;
+            while ((linea = br.readLine()) != null) {
+                salida.println(String.format("%2d | %s", numeroLinea, linea));
+                numeroLinea++;
+            }
+        } catch (IOException e) {
+            salida.println("❌ Error leyendo el archivo");
+        }
+        salida.println("-".repeat(40));
+    }
+
+    salida.println("\n✏️ MODO EDICIÓN - '" + nombreArchivo + "'");
+    salida.println("📝 Escribe el nuevo contenido línea por línea.");
+    salida.println("💡 Para terminar, escribe una línea que contenga solo: FIN");
+    salida.println("⚠️ El contenido anterior será reemplazado completamente.");
+    salida.println("");
+
+    try (PrintWriter pw = new PrintWriter(new FileWriter(archivo))) {
+        String linea;
+        int numeroLinea = 1;
+        
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.trim().equalsIgnoreCase("FIN")) {
+                break;
+            }
+            pw.println(linea);
+            salida.println(String.format("✓ Línea %d guardada", numeroLinea));
+            numeroLinea++;
+        }
+        
+        salida.println("\n✅ Archivo '" + nombreArchivo + "' guardado exitosamente");
+        salida.println("📊 Total de líneas: " + (numeroLinea - 1));
+        
+    } catch (IOException e) {
+        salida.println("❌ Error guardando el archivo: " + e.getMessage());
+    }
+
+    salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+}
+
+
+private void crearNuevoArchivo(BufferedReader entrada) throws IOException {
+    salida.println("📝 Ingresa el nombre del nuevo archivo (sin extensión):");
+    String nombreArchivo = entrada.readLine();
+    
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("❌ Nombre de archivo vacío");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    nombreArchivo = nombreArchivo.trim();
+    if (!nombreArchivo.endsWith(".txt")) {
+        nombreArchivo += ".txt";
+    }
+
+    // Validar nombre de archivo
+    if (nombreArchivo.contains("/") || nombreArchivo.contains("\\") || 
+        nombreArchivo.contains(":") || nombreArchivo.contains("*") ||
+        nombreArchivo.contains("?") || nombreArchivo.contains("<") ||
+        nombreArchivo.contains(">") || nombreArchivo.contains("|")) {
+        salida.println("❌ Nombre de archivo inválido. No uses caracteres especiales.");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    File archivo = new File("archivos/" + usuario + "/" + nombreArchivo);
+    if (archivo.exists()) {
+        salida.println("⚠️ El archivo '" + nombreArchivo + "' ya existe");
+        salida.println("¿Quieres sobrescribirlo? (s/n):");
+        String sobrescribir = entrada.readLine();
+        if (sobrescribir == null || !sobrescribir.trim().toLowerCase().startsWith("s")) {
+            return;
+        }
+    }
+
+    salida.println("\n✏️ CREAR ARCHIVO - '" + nombreArchivo + "'");
+    salida.println("📝 Escribe el contenido línea por línea.");
+    salida.println("💡 Para terminar, escribe una línea que contenga solo: FIN");
+    salida.println("");
+
+    try (PrintWriter pw = new PrintWriter(new FileWriter(archivo))) {
+        String linea;
+        int numeroLinea = 1;
+        
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.trim().equalsIgnoreCase("FIN")) {
+                break;
+            }
+            pw.println(linea);
+            salida.println(String.format("✓ Línea %d guardada", numeroLinea));
+            numeroLinea++;
+        }
+        
+        salida.println("\n✅ Archivo '" + nombreArchivo + "' creado exitosamente");
+        salida.println("📊 Total de líneas: " + (numeroLinea - 1));
+        
+    } catch (IOException e) {
+        salida.println("❌ Error creando el archivo: " + e.getMessage());
+    }
+
+    salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+}
+
+private void eliminarArchivo(BufferedReader entrada) throws IOException {
+    salida.println("🗑️ Ingresa el nombre del archivo a eliminar (con extensión .txt):");
+    String nombreArchivo = entrada.readLine();
+    
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("❌ Nombre de archivo vacío");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    nombreArchivo = nombreArchivo.trim();
+    if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+        salida.println("❌ Solo se pueden eliminar archivos .txt");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    File archivo = new File("archivos/" + usuario + "/" + nombreArchivo);
+    if (!archivo.exists()) {
+        salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
+        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        return;
+    }
+
+    salida.println("⚠️ ¿Estás seguro de que quieres eliminar '" + nombreArchivo + "'?");
+    salida.println("📊 Tamaño del archivo: " + archivo.length() + " bytes");
+    salida.println("🔥 Esta acción no se puede deshacer. (s/n):");
+    
+    String confirmacion = entrada.readLine();
+    if (confirmacion != null && confirmacion.trim().toLowerCase().startsWith("s")) {
+        if (archivo.delete()) {
+            salida.println("✅ Archivo '" + nombreArchivo + "' eliminado exitosamente");
+        } else {
+            salida.println("❌ Error eliminando el archivo");
+        }
+    } else {
+        salida.println("❌ Eliminación cancelada");
+    }
+
+    salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+}
         private static boolean verificarLogin(String usuario, String password) {
             try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
                 String linea;
@@ -1241,5 +1565,80 @@ case "6":
                 return password; // Fallback sin hash en caso de error
             }
         }
+    }  private static void crearArchivosEjemplo(String usuario) {
+    File directorioUsuario = new File("archivos/" + usuario);
+    
+    // Solo crear archivos si el directorio no existe o está vacío
+    if (!directorioUsuario.exists() || (directorioUsuario.listFiles() != null && 
+        directorioUsuario.listFiles().length == 0)) {
+        
+        directorioUsuario.mkdirs();
+        
+        try {
+            // Crear documento1.txt
+            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "documento1.txt")))) {
+                pw.println("=== DOCUMENTO PERSONAL ===");
+                pw.println("Propietario: " + usuario);
+                pw.println("Fecha de creación: " + java.time.LocalDateTime.now().toString());
+                pw.println("");
+                pw.println("Este es un documento de ejemplo que contiene");
+                pw.println("información importante para el usuario " + usuario + ".");
+                pw.println("");
+                pw.println("Contenido:");
+                pw.println("- Lista de tareas pendientes");
+                pw.println("- Notas importantes");
+                pw.println("- Recordatorios personales");
+            }
+            
+            // Crear notas.txt
+            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "notas.txt")))) {
+                pw.println("=== MIS NOTAS PERSONALES ===");
+                pw.println("Usuario: " + usuario);
+                pw.println("");
+                pw.println("📝 TAREAS PENDIENTES:");
+                pw.println("- Completar proyecto de programación");
+                pw.println("- Revisar mensajes importantes");
+                pw.println("- Actualizar lista de contactos");
+                pw.println("- Organizar archivos del sistema");
+                pw.println("");
+                pw.println("💡 IDEAS:");
+                pw.println("- Implementar sistema de notificaciones");
+                pw.println("- Mejorar interfaz de usuario");
+                pw.println("- Añadir más funcionalidades");
+                pw.println("");
+                pw.println("📅 RECORDATORIOS:");
+                pw.println("- Hacer backup semanal");
+                pw.println("- Revisar logs del servidor");
+                pw.println("- Actualizar documentación");
+            }
+            
+            // Crear configuracion.txt
+            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "configuracion.txt")))) {
+                pw.println("# Archivo de configuración de usuario");
+                pw.println("# Generado automáticamente");
+                pw.println("");
+                pw.println("[USUARIO]");
+                pw.println("nombre=" + usuario);
+                pw.println("tipo=estandar");
+                pw.println("activo=true");
+                pw.println("");
+                pw.println("[PREFERENCIAS]");
+                pw.println("tema=oscuro");
+                pw.println("idioma=español");
+                pw.println("notificaciones=activadas");
+                pw.println("sonidos=desactivados");
+                pw.println("");
+                pw.println("[ARCHIVOS]");
+                pw.println("directorio_principal=archivos/" + usuario);
+                pw.println("backup_automatico=true");
+                pw.println("max_archivos=100");
+            }
+            
+            System.out.println("Archivos de ejemplo creados para: " + usuario);
+            
+        } catch (IOException e) {
+            System.err.println("Error creando archivos de ejemplo para " + usuario + ": " + e.getMessage());
+        }
     }
+}
 }

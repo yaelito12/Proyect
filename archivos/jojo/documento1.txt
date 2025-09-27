@@ -1,0 +1,11 @@
+=== DOCUMENTO PERSONAL ===
+Propietario: jojo
+Fecha de creación: 2025-09-27T14:27:32.568253400
+
+Este es un documento de ejemplo que contiene
+información importante para el usuario jojo.
+
+Contenido:
+- Lista de tareas pendientes
+- Notas importantes
+- Recordatorios personales

@@ -141,7 +141,12 @@ public class Cliente {
                 explorarArchivos(entrada, salida, teclado);
                 enMenu = true;
                 break;
-            case "6": 
+            case "6":
+                enMenu = false;
+                gestionarMisArchivos(entrada, salida, teclado);
+                enMenu = true;
+                break;
+            case "7": 
                 String sesionCerrada = entrada.readLine();
                 System.out.println(sesionCerrada);
                 logueado = false;
@@ -399,49 +404,49 @@ public class Cliente {
         }
     }
 
-    private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        boolean jugando = true;
+  private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    boolean jugando = true;
+    
+    while (jugando && !expulsado) {
+        String linea;
         
-        while (jugando && !expulsado) {
-            String linea;
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
+                return;
+            }
             
-            while ((linea = entrada.readLine()) != null) {
-                if (linea.equals("DISCONNECT")) {
-                    expulsado = true;
+            if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
+                entrada.readLine();
+                continue; 
+            }
+            
+            System.out.println(linea);
+
+            if (linea.contains("Ingresa tu número:")) {
+                System.out.print("> ");
+                String numero = teclado.readLine();
+                if (numero == null || expulsado) return;
+                salida.println(numero);
+                
+                if (numero.trim().equalsIgnoreCase("menu")) {
                     return;
                 }
-                
-                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
-                    entrada.readLine();
-                    continue; 
-                }
-                
-                System.out.println(linea);
+            } else if (linea.toLowerCase().contains("¿quieres jugar otra vez?")) {
+                System.out.print("> ");
+                String respuesta = teclado.readLine();
+                if (respuesta == null || expulsado) return;
+                salida.println(respuesta);
 
-                if (linea.contains("Ingresa tu número:")) {
-                    System.out.print("> ");
-                    String numero = teclado.readLine();
-                    if (numero == null || expulsado) return;
-                    salida.println(numero);
-                    
-                    if (numero.trim().equalsIgnoreCase("menu")) {
-                        return;
-                    }
-                } else if (linea.toLowerCase().contains("¿quieres jugar otra vez?")) {
-                    System.out.print("> ");
-                    String respuesta = teclado.readLine();
-                    if (respuesta == null || expulsado) return;
-                    salida.println(respuesta);
-
-                    if (respuesta != null && (respuesta.trim().equalsIgnoreCase("n") || 
-                                            respuesta.trim().equalsIgnoreCase("menu"))) {
-                        jugando = false;
-                    }
-                    break;
+                if (respuesta != null && (respuesta.trim().equalsIgnoreCase("n") || 
+                                        respuesta.trim().equalsIgnoreCase("menu"))) {
+                    jugando = false;
                 }
+                break;
             }
         }
     }
+}
 
     private static void enviarMensaje(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         String linea;
@@ -501,12 +506,12 @@ public class Cliente {
         }
     }
 
-   // FUNCIONALIDAD CORREGIDA: Explorar archivos con manejo correcto del flujo
-private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+  private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
     while (!expulsado) {
         String linea;
+        boolean esperandoInput = false;
         
-        // Leer todas las líneas del servidor
+        // Leer todas las líneas del servidor hasta encontrar un punto donde necesitemos input
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
@@ -515,125 +520,241 @@ private static void explorarArchivos(BufferedReader entrada, PrintWriter salida,
             
             System.out.println(linea);
             
-            // Si no hay usuarios conectados, volver automáticamente
+            // Detectar si necesitamos input del usuario
             if (linea.toLowerCase().contains("regresando al menú principal")) {
                 return; // Volver al menú principal automáticamente
             }
             
-            // Si necesita selección de usuario
-            if (linea.toLowerCase().contains("seleccione el número del usuario")) {
-                break; // Salir para pedir input
+            if (linea.toLowerCase().contains("volviendo a la lista de usuarios")) {
+                break; // Continuar el bucle para mostrar la lista de usuarios nuevamente
             }
             
-            // Si necesita otras opciones
-            if (linea.toLowerCase().contains("seleccione una opción")) {
-                break;
-            }
-            
-            // Si pide nombre de archivo
-            if (linea.toLowerCase().contains("ingresa el nombre exacto del archivo")) {
-                break;
-            }
-            
-            // Si pide confirmación de descarga
-            if (linea.toLowerCase().contains("confirma la descarga")) {
+            if (linea.toLowerCase().contains("seleccione el número del usuario") ||
+                linea.toLowerCase().contains("seleccione una opción") ||
+                linea.toLowerCase().contains("ingresa el nombre exacto del archivo") ||
+                linea.toLowerCase().contains("confirma la descarga")) {
+                esperandoInput = true;
                 break;
             }
         }
 
         if (expulsado) return;
         
-        // Si llegamos aquí, necesitamos input del usuario
-        System.out.print("> ");
-        String respuesta = teclado.readLine();
-        if (respuesta == null || expulsado) break;
+        // Si necesitamos input del usuario
+        if (esperandoInput) {
+            System.out.print("> ");
+            String respuesta = teclado.readLine();
+            if (respuesta == null || expulsado) break;
 
-        salida.println(respuesta);
+            salida.println(respuesta);
 
-        // Si elige volver al menú principal (opción 0)
-        if (respuesta.trim().equals("0")) {
-            return;
-        }
-        
-        // Para confirmaciones de descarga
-        if (respuesta.trim().toLowerCase().startsWith("s") || 
-            respuesta.trim().toLowerCase().startsWith("n")) {
-            leerRespuestaDescarga(entrada);
+            // Si el usuario elige volver al menú principal (opción 0 desde lista de usuarios)
+            if (respuesta.trim().equals("0")) {
+                // Leer el mensaje de confirmación del servidor
+                String confirmacion = entrada.readLine();
+                if (confirmacion != null && !confirmacion.equals("DISCONNECT")) {
+                    System.out.println(confirmacion);
+                }
+                
+                // Si el mensaje contiene "regresando al menú principal", salir
+                if (confirmacion != null && confirmacion.toLowerCase().contains("regresando al menú principal")) {
+                    return;
+                }
+                // Si contiene "volviendo a la lista de usuarios", continuar el bucle
+            }
+            
+            // Para confirmaciones de descarga, leer la respuesta del servidor
+            if (respuesta.trim().toLowerCase().startsWith("s") || 
+                respuesta.trim().toLowerCase().startsWith("n")) {
+                leerRespuestaDescarga(entrada);
+            }
+        } else {
+            // Si no esperamos input, algo salió mal, salir
+            break;
         }
     }
 }
-    private static void leerRespuestaDescarga(BufferedReader entrada) throws IOException {
-        String linea;
-        int lineasLeidas = 0;
+
+  private static void leerRespuestaDescarga(BufferedReader entrada) throws IOException {
+    String linea;
+    
+    while ((linea = entrada.readLine()) != null) {
+        if (linea.equals("DISCONNECT")) {
+            expulsado = true;
+            return;
+        }
         
-        while ((linea = entrada.readLine()) != null && lineasLeidas < 15) {
+        System.out.println(linea);
+        
+        // Parar de leer cuando alcancemos el final de la respuesta de descarga
+        if (linea.toLowerCase().contains("descarga completada") || 
+            linea.toLowerCase().contains("descarga cancelada")) {
+            // Leer una línea más para el mensaje "En un sistema real..." si está presente
+            String extraLinea = entrada.readLine();
+            if (extraLinea != null && !extraLinea.equals("DISCONNECT")) {
+                System.out.println(extraLinea);
+            }
+            break;
+        }
+    }
+}
+
+    // MÉTODO MEJORADO: Gestionar mis archivos con mejor flujo de control
+  private static void gestionarMisArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    while (!expulsado) {
+        String linea;
+        boolean esperandoInput = false;
+        
+        // Leer toda la respuesta del servidor
+        while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
                 return;
             }
             
             System.out.println(linea);
-            lineasLeidas++;
             
-            if (linea.toLowerCase().contains("presiona enter para continuar")) {
+            // Detectar puntos donde necesitamos input
+            if (linea.toLowerCase().contains("seleccione una opción") ||
+                linea.toLowerCase().contains("ingresa el nombre") ||
+                linea.toLowerCase().contains("quieres crearlo") ||
+                linea.toLowerCase().contains("quieres sobrescribirlo") ||
+                linea.toLowerCase().contains("esta acción no se puede deshacer") ||
+                linea.toLowerCase().contains("confirma la descarga")) {
+                esperandoInput = true;
                 break;
             }
             
-            if (linea.trim().isEmpty() && lineasLeidas > 3) {
+            // Detectar cuando el servidor pide comandos de navegación
+            if (linea.toLowerCase().contains("escribe 'volver' para regresar o 'salir' para el menú principal")) {
+                System.out.print("Comando: ");
+                String comando = teclado.readLine();
+                if (comando == null || expulsado) return;
+                
+                salida.println(comando); // Enviar comando al servidor
+                
+                comando = comando.trim().toLowerCase();
+                if (comando.equals("salir")) {
+                    return; // Salir completamente al menú principal
+                } else if (comando.equals("volver") || comando.equals("menu")) {
+                    break; // Continuar el bucle para mostrar el menú de archivos
+                }
+                break;
+            }
+            
+            // Modo edición - leer líneas hasta FIN
+            if (linea.toLowerCase().contains("para terminar, escribe una línea que contenga solo: fin")) {
+                manejarEdicionArchivo(entrada, salida, teclado);
                 break;
             }
         }
+
+        if (expulsado) return;
+        
+        if (esperandoInput) {
+            System.out.print("> ");
+            String respuesta = teclado.readLine();
+            if (respuesta == null || expulsado) break;
+
+            salida.println(respuesta);
+
+            // Si elige volver al menú principal
+            if (respuesta.trim().equals("0")) {
+                return;
+            }
+        }
     }
+}
+  private static void manejarEdicionArchivo(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    System.out.println("\n🖊️  MODO EDICIÓN ACTIVADO");
+    System.out.println("Escribe el contenido línea por línea.");
+    System.out.println("Para terminar, escribe: FIN");
+    System.out.println();
+    
+    String linea;
+    while ((linea = teclado.readLine()) != null) {
+        salida.println(linea);
+        
+        if (linea.trim().equalsIgnoreCase("FIN")) {
+            break;
+        }
+        
+        // Leer confirmación del servidor
+        String confirmacion = entrada.readLine();
+        if (confirmacion != null && !confirmacion.equals("DISCONNECT")) {
+            System.out.println(confirmacion);
+        }
+    }
+    
+    // Leer mensajes finales del servidor
+    for (int i = 0; i < 3; i++) {
+        String mensaje = entrada.readLine();
+        if (mensaje != null && !mensaje.equals("DISCONNECT")) {
+            System.out.println(mensaje);
+            
+            // Si el servidor envía el mensaje de comandos, manejarlo aquí
+            if (mensaje.toLowerCase().contains("escribe 'volver' para regresar o 'salir' para el menú principal")) {
+                System.out.print("Comando: ");
+                String comando = teclado.readLine();
+                if (comando != null) {
+                    salida.println(comando); // Enviar comando al servidor
+                }
+                return; // Salir del método para que el método padre maneje la respuesta
+            }
+        }
+    }
+}
+
 
     // NUEVA FUNCIONALIDAD: Manejo de autorización para acceso a archivos
-    private static void manejarSolicitudAutorizacion(PrintWriter salida, String solicitante) {
-        System.out.println("\n════════════════════════════════");
-        System.out.println("🔒 SOLICITUD DE ACCESO A ARCHIVOS");
-        System.out.println("════════════════════════════════");
-        System.out.println("📋 " + solicitante + " quiere acceder a tu lista de archivos.");
-        System.out.println("💭 ¿Deseas autorizar el acceso?");
-        System.out.println("");
-        System.out.println("✅ Esta solicitud se procesará automáticamente por ahora.");
-        System.out.println("🔮 Funcionalidad de autorización manual será implementada próximamente.");
-        System.out.println("════════════════════════════════");
-        
-        // Por ahora, autorizar automáticamente (en el futuro se puede mejorar)
-        // salida.println("AUTHORIZATION_RESPONSE:" + solicitante + ":GRANTED");
-    }
+   private static void manejarSolicitudAutorizacion(PrintWriter salida, String solicitante) {
+    System.out.println("\n════════════════════════════════");
+    System.out.println("🔒 SOLICITUD DE ACCESO A ARCHIVOS");
+    System.out.println("════════════════════════════════");
+    System.out.println("📋 " + solicitante + " quiere acceder a tu lista de archivos.");
+    System.out.println("💭 ¿Deseas autorizar el acceso?");
+    System.out.println("");
+    System.out.println("✅ Esta solicitud se procesará automáticamente por ahora.");
+    System.out.println("🔮 Funcionalidad de autorización manual será implementada próximamente.");
+    System.out.println("════════════════════════════════");
+    
+    // Por ahora, autorizar automáticamente (en el futuro se puede mejorar)
+    // salida.println("AUTHORIZATION_RESPONSE:" + solicitante + ":GRANTED");
+}
 
     // FUNCIONALIDAD AUXILIAR: Crear archivos de ejemplo para testing
-    public static void crearArchivosEjemplo() {
-        try {
-            // Crear directorio de archivos para el usuario
-            File directorioUsuario = new File("archivos/" + usuarioActual);
-            if (!directorioUsuario.exists()) {
-                directorioUsuario.mkdirs();
-                
-                // Crear algunos archivos de ejemplo
-                try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "documento1.txt")))) {
-                    pw.println("Este es un documento de ejemplo.");
-                    pw.println("Contiene información importante.");
-                    pw.println("Creado por: " + usuarioActual);
-                }
-                
-                try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "notas.txt")))) {
-                    pw.println("=== MIS NOTAS ===");
-                    pw.println("- Recordar completar el proyecto");
-                    pw.println("- Revisar mensajes importantes");
-                    pw.println("- Actualizar lista de contactos");
-                }
-                
-                try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "configuracion.txt")))) {
-                    pw.println("# Archivo de configuración");
-                    pw.println("usuario=" + usuarioActual);
-                    pw.println("tema=oscuro");
-                    pw.println("idioma=español");
-                }
-                
-                System.out.println("📁 Archivos de ejemplo creados en: " + directorioUsuario.getPath());
+   public static void crearArchivosEjemplo() {
+    try {
+        // Crear directorio de archivos para el usuario
+        File directorioUsuario = new File("archivos/" + usuarioActual);
+        if (!directorioUsuario.exists()) {
+            directorioUsuario.mkdirs();
+            
+            // Crear algunos archivos de ejemplo
+            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "documento1.txt")))) {
+                pw.println("Este es un documento de ejemplo.");
+                pw.println("Contiene información importante.");
+                pw.println("Creado por: " + usuarioActual);
             }
-        } catch (IOException e) {
-            System.err.println("Error creando archivos de ejemplo: " + e.getMessage());
+            
+            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "notas.txt")))) {
+                pw.println("=== MIS NOTAS ===");
+                pw.println("- Recordar completar el proyecto");
+                pw.println("- Revisar mensajes importantes");
+                pw.println("- Actualizar lista de contactos");
+            }
+            
+            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "configuracion.txt")))) {
+                pw.println("# Archivo de configuración");
+                pw.println("usuario=" + usuarioActual);
+                pw.println("tema=oscuro");
+                pw.println("idioma=español");
+            }
+            
+            System.out.println("📁 Archivos de ejemplo creados en: " + directorioUsuario.getPath());
         }
+    } catch (IOException e) {
+        System.err.println("Error creando archivos de ejemplo: " + e.getMessage());
     }
+}
 }

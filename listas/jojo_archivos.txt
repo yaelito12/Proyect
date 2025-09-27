@@ -1,0 +1,7 @@
+=== ARCHIVOS DE JOJO ===
+📂 Archivos .txt disponibles:
+1. 📄 configuracion.txt (311 bytes)
+2. 📄 documento1.txt (286 bytes)
+3. 📄 notas.txt (434 bytes)
+
+Para descargar un archivo, solicita el nombre exacto con extensión .txt

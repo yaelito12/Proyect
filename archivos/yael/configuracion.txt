@@ -1,0 +1,18 @@
+# Archivo de configuración de usuario
+# Generado automáticamente
+
+[USUARIO]
+nombre=yael
+tipo=estandar
+activo=true
+
+[PREFERENCIAS]
+tema=oscuro
+idioma=español
+notificaciones=activadas
+sonidos=desactivados
+
+[ARCHIVOS]
+directorio_principal=archivos/yael
+backup_automatico=true
+max_archivos=100
