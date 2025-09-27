@@ -64,6 +64,47 @@ public class SerVerr {
         }
     }
 
+    // NUEVA FUNCIONALIDAD: Crear archivo de lista de archivos para cada usuario
+    private static void crearListaArchivos(String usuario) {
+        File directorioUsuario = new File("archivos/" + usuario);
+        File archivoLista = new File("listas/" + usuario + "_archivos.txt");
+        
+        // Crear directorios si no existen
+        directorioUsuario.mkdirs();
+        archivoLista.getParentFile().mkdirs();
+        
+        try (PrintWriter pw = new PrintWriter(new FileWriter(archivoLista))) {
+            pw.println("=== ARCHIVOS DE " + usuario.toUpperCase() + " ===");
+            
+            File[] archivos = directorioUsuario.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
+            
+            if (archivos == null || archivos.length == 0) {
+                pw.println("📭 No hay archivos .txt disponibles.");
+            } else {
+                pw.println("📂 Archivos .txt disponibles:");
+                for (int i = 0; i < archivos.length; i++) {
+                    long bytes = archivos[i].length();
+                    String tamaño = bytes < 1024 ? bytes + " bytes" : 
+                                  bytes < 1048576 ? (bytes/1024) + " KB" : 
+                                  (bytes/1048576) + " MB";
+                    
+                    pw.println((i + 1) + ". 📄 " + archivos[i].getName() + " (" + tamaño + ")");
+                }
+            }
+            pw.println("\nPara descargar un archivo, solicita el nombre exacto con extensión .txt");
+        } catch (IOException e) {
+            System.err.println("Error creando lista de archivos para " + usuario + ": " + e.getMessage());
+        }
+    }
+    
+    // NUEVA FUNCIONALIDAD: Solicitar autorización para acceso a archivos
+    private static void solicitarAutorizacionArchivos(String solicitante, String propietario) {
+        ClienteInfo clientePropietario = clientes.get(propietario);
+        if (clientePropietario != null) {
+            clientePropietario.salida.println("AUTHORIZATION_REQUEST:" + solicitante);
+        }
+    }
+
     private static boolean eliminarUsuarioCompleto(String usuario) {
         try {
             if (!eliminarUsuarioDelArchivo(usuario)) {
@@ -80,6 +121,18 @@ public class SerVerr {
                 }
             }
 
+            // Eliminar archivos del usuario
+            File directorioArchivos = new File("archivos/" + usuario);
+            if (directorioArchivos.exists()) {
+                eliminarDirectorio(directorioArchivos);
+            }
+            
+            // Eliminar lista de archivos
+            File archivoLista = new File("listas/" + usuario + "_archivos.txt");
+            if (archivoLista.exists()) {
+                archivoLista.delete();
+            }
+
             usuariosExpulsados.add(usuario);
             System.out.println("Usuario " + usuario + " eliminado completamente del sistema");
             System.out.println("El usuario puede registrarse nuevamente con el mismo nombre");
@@ -89,6 +142,20 @@ public class SerVerr {
             System.err.println("Error eliminando usuario " + usuario + ": " + e.getMessage());
             return false;
         }
+    }
+    
+    private static void eliminarDirectorio(File directorio) {
+        File[] archivos = directorio.listFiles();
+        if (archivos != null) {
+            for (File archivo : archivos) {
+                if (archivo.isDirectory()) {
+                    eliminarDirectorio(archivo);
+                } else {
+                    archivo.delete();
+                }
+            }
+        }
+        directorio.delete();
     }
 
     private static boolean eliminarUsuarioDelArchivo(String usuarioAEliminar) {
@@ -478,6 +545,8 @@ private static void enviarMensajeACliente() {
                             case "1":
                                 if (login(entrada)) {
                                     logueado = true;
+                                    // Crear lista de archivos al loguearse
+                                    crearListaArchivos(usuario);
                                 }
                                 break;
                             case "2":
@@ -603,6 +672,11 @@ case "6":
                 }
 
                 usuariosExpulsados.remove(u);
+                
+                // Crear directorio de archivos para el nuevo usuario
+                new File("archivos/" + u).mkdirs();
+                new File("listas").mkdirs();
+                
                 salida.println("Usuario registrado correctamente");
                 System.out.println("Nuevo usuario registrado: " + u);
             } else {
@@ -702,7 +776,7 @@ case "6":
             salida.println("✅ Usuario '" + usuarioABloquear + "' bloqueado correctamente.");
         }
 
-        private void desbloquearUsuario(BufferedReader entrada) throws IOException {
+  private void desbloquearUsuario(BufferedReader entrada) throws IOException {
             Set<String> bloqueados = usuariosBloqueados.get(usuario);
             if (bloqueados == null || bloqueados.isEmpty()) {
                 salida.println("No tienes usuarios bloqueados.");
@@ -710,9 +784,10 @@ case "6":
             }
 
             salida.println("=== USUARIOS BLOQUEADOS ===");
-            List<String> listaBloqueados = new ArrayList<>(bloqueados);
-            for (int i = 0; i < listaBloqueados.size(); i++) {
-                salida.println((i + 1) + ". " + listaBloqueados.get(i));
+            int i = 1;
+            for (String usuarioBloqueado : bloqueados) {
+                salida.println(i + ". " + usuarioBloqueado);
+                i++;
             }
 
             salida.println("Ingrese el nombre del usuario a desbloquear:");
@@ -731,297 +806,389 @@ case "6":
             }
         }
 
-   
-private void mostrarBandeja(BufferedReader entrada) throws IOException {
-    boolean enBandeja = true;
-    int paginaActual = 0;
-    final int MENSAJES_POR_PAGINA = 5;
+        private void mostrarBandeja(BufferedReader entrada) throws IOException {
+            boolean enBandeja = true;
+            int paginaActual = 1;
+            final int MENSAJES_POR_PAGINA = 10;
 
-    while (enBandeja) {
-        List<String> mensajes = cargarMensajes(usuario);
+            while (enBandeja) {
+                List<String> mensajes = cargarMensajes(usuario);
+                int totalMensajes = mensajes.size();
+                int totalPaginas = (totalMensajes + MENSAJES_POR_PAGINA - 1) / MENSAJES_POR_PAGINA;
 
-        salida.println("╔════════════════════════════════╗");
-        salida.println("║        BANDEJA DE ENTRADA      ║");
-        salida.println("╚════════════════════════════════╝");
+                if (totalMensajes == 0) {
+                    salida.println("=== BANDEJA DE ENTRADA ===");
+                    salida.println("📭 No tienes mensajes");
+                    salida.println("\nComandos disponibles:");
+                    salida.println("- 'menu' o 'salir' para volver al menú principal");
+                    salida.println("- 'actualizar' para revisar nuevos mensajes");
+                } else {
+                    salida.println("=== BANDEJA DE ENTRADA ===");
+                    salida.println("📧 Tienes " + totalMensajes + " mensaje(s) - Página " + paginaActual + "/" + totalPaginas);
+                    salida.println("");
 
-        if (mensajes.isEmpty()) {
-            salida.println("📭 No hay mensajes nuevos.");
-        } else {
-            int totalPaginas = (int) Math.ceil((double) mensajes.size() / MENSAJES_POR_PAGINA);
-            
-            // Validar que la página actual esté en rango
-            if (paginaActual >= totalPaginas) {
-                paginaActual = totalPaginas - 1;
-            }
-            if (paginaActual < 0) {
-                paginaActual = 0;
-            }
+                    int inicio = (paginaActual - 1) * MENSAJES_POR_PAGINA;
+                    int fin = Math.min(inicio + MENSAJES_POR_PAGINA, totalMensajes);
 
-            int inicio = paginaActual * MENSAJES_POR_PAGINA;
-            int fin = Math.min(inicio + MENSAJES_POR_PAGINA, mensajes.size());
+                    for (int i = inicio; i < fin; i++) {
+                        salida.println((i + 1) + ". " + mensajes.get(i));
+                    }
 
-            salida.println("📬 Mensajes (Página " + (paginaActual + 1) + " de " + totalPaginas + "):");
-            
-            for (int i = inicio; i < fin; i++) {
-                salida.println((i + 1) + ". " + mensajes.get(i));
-            }
+                    salida.println("\nComandos disponibles:");
+                    if (paginaActual > 1) salida.println("- 'anterior' para página anterior");
+                    if (paginaActual < totalPaginas) salida.println("- 'siguiente' para página siguiente");
+                    salida.println("- 'pagina N' para ir a página específica");
+                    salida.println("- 'eliminar N' para eliminar mensaje número N");
+                    salida.println("- 'actualizar' para revisar nuevos mensajes");
+                    salida.println("- 'menu' o 'salir' para volver al menú principal");
+                }
 
-            salida.println("\nNavegación:");
-            if (paginaActual > 0) {
-                salida.println(" - escribir 'anterior' para página anterior");
-            }
-            if (paginaActual < totalPaginas - 1) {
-                salida.println(" - escribir 'siguiente' para página siguiente");
-            }
-            salida.println(" - escribir 'pagina <número>' para ir a una página específica");
-        }
+                String comando = entrada.readLine();
+                if (comando == null) break;
 
-        salida.println("\nOpciones:");
-        salida.println(" - escribir 'actualizar' para refrescar la bandeja");
-        salida.println(" - escribir 'eliminar <número>' para borrar un mensaje");
-        salida.println(" - escribir 'salir' para volver al menú principal");
-        salida.println(" - escribir 'menu' para ir al menú principal");
+                comando = comando.trim().toLowerCase();
 
-        String comando = entrada.readLine();
-        if (comando == null) break;
-
-        comando = comando.trim().toLowerCase();
-
-        if (comando.equalsIgnoreCase("salir") || comando.equalsIgnoreCase("menu")) {
-            enBandeja = false;
-        } else if (comando.equalsIgnoreCase("actualizar")) {
-            salida.println("Bandeja actualizada...");
-            paginaActual = 0; // Reiniciar a la primera página al actualizar
-        } else if (comando.equalsIgnoreCase("siguiente")) {
-            List<String> mensajesActuales = cargarMensajes(usuario);
-            int totalPaginas = (int) Math.ceil((double) mensajesActuales.size() / MENSAJES_POR_PAGINA);
-            if (paginaActual < totalPaginas - 1) {
-                paginaActual++;
-                salida.println("Avanzando a página " + (paginaActual + 1));
-            } else {
-                salida.println("Ya estás en la última página.");
-            }
-        } else if (comando.equalsIgnoreCase("anterior")) {
-            if (paginaActual > 0) {
-                paginaActual--;
-                salida.println("Retrocediendo a página " + (paginaActual + 1));
-            } else {
-                salida.println("Ya estás en la primera página.");
-            }
-        } else if (comando.startsWith("pagina ")) {
-            try {
-                String[] partes = comando.split(" ");
-                if (partes.length >= 2) {
-                    int numeroPagina = Integer.parseInt(partes[1]) - 1; // Convertir a índice base 0
-                    List<String> mensajesActuales = cargarMensajes(usuario);
-                    int totalPaginas = (int) Math.ceil((double) mensajesActuales.size() / MENSAJES_POR_PAGINA);
-                    
-                    if (numeroPagina >= 0 && numeroPagina < totalPaginas) {
-                        paginaActual = numeroPagina;
-                        salida.println("Navegando a página " + (paginaActual + 1));
-                    } else {
-                        salida.println("Página inválida. Rango válido: 1 a " + totalPaginas);
+                if (comando.equals("menu") || comando.equals("salir")) {
+                    enBandeja = false;
+                } else if (comando.equals("actualizar")) {
+                    salida.println("✅ Bandeja actualizada");
+                } else if (comando.equals("siguiente") && paginaActual < totalPaginas) {
+                    paginaActual++;
+                    salida.println("➡️ Página " + paginaActual);
+                } else if (comando.equals("anterior") && paginaActual > 1) {
+                    paginaActual--;
+                    salida.println("⬅️ Página " + paginaActual);
+                } else if (comando.startsWith("pagina ")) {
+                    try {
+                        int nuevaPagina = Integer.parseInt(comando.substring(7).trim());
+                        if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+                            paginaActual = nuevaPagina;
+                            salida.println("📄 Página " + paginaActual);
+                        } else {
+                            salida.println("❌ Página fuera de rango (1-" + totalPaginas + ")");
+                        }
+                    } catch (NumberFormatException e) {
+                        salida.println("❌ Número de página inválido");
+                    }
+                } else if (comando.startsWith("eliminar ")) {
+                    try {
+                        int numeroMensaje = Integer.parseInt(comando.substring(9).trim());
+                        if (eliminarMensaje(usuario, numeroMensaje - 1)) {
+                            salida.println("✅ Mensaje eliminado correctamente");
+                            // Ajustar página si es necesario
+                            mensajes = cargarMensajes(usuario);
+                            totalPaginas = (mensajes.size() + MENSAJES_POR_PAGINA - 1) / MENSAJES_POR_PAGINA;
+                            if (paginaActual > totalPaginas && totalPaginas > 0) {
+                                paginaActual = totalPaginas;
+                            }
+                        } else {
+                            salida.println("❌ Error eliminando mensaje o número inválido");
+                        }
+                    } catch (NumberFormatException e) {
+                        salida.println("❌ Número de mensaje inválido");
                     }
                 } else {
-                    salida.println("Uso: pagina <número>");
+                    salida.println("❌ Comando no reconocido");
                 }
-            } catch (NumberFormatException e) {
-                salida.println("Uso: pagina <número>");
             }
-        } else if (comando.startsWith("eliminar")) {
-            try {
-                String[] partes = comando.split(" ");
-                if (partes.length < 2) {
-                    salida.println("Uso: eliminar <número>");
-                    continue;
-                }
-                int index = Integer.parseInt(partes[1]) - 1;
-                if (eliminarMensaje(usuario, index)) {
-                    salida.println("Mensaje eliminado.");
-                    // Recalcular página después de eliminar
-                    List<String> mensajesActualizados = cargarMensajes(usuario);
-                    int totalPaginas = (int) Math.ceil((double) mensajesActualizados.size() / MENSAJES_POR_PAGINA);
-                    if (paginaActual >= totalPaginas && totalPaginas > 0) {
-                        paginaActual = totalPaginas - 1;
-                    }
-                } else {
-                    salida.println("Índice inválido o error al eliminar.");
-                }
-            } catch (NumberFormatException e) {
-                salida.println("Uso: eliminar <número>");
-            }
-        } else {
-            salida.println("Comando no reconocido.");
         }
-    }
-}
-        private void enviarMensajeUsuario(BufferedReader entrada) throws IOException {
-            salida.println("=== USUARIOS REGISTRADOS ===");
-            List<String> todosUsuarios = obtenerTodosLosUsuarios();
-            List<String> disponibles = new ArrayList<>();
 
-            for (String u : todosUsuarios) {
-                if (!u.equals(usuario)) {
-                    disponibles.add(u);
-                }
-            }
-
-            if (disponibles.isEmpty()) {
-                salida.println("No hay otros usuarios registrados.");
-                return;
-            }
-
-            for (int i = 0; i < disponibles.size(); i++) {
-                String u = disponibles.get(i);
-                String estado = clientes.containsKey(u) ? "(conectado)" : "(desconectado)";
-                Set<String> bloqueados = usuariosBloqueados.get(usuario);
-                String bloqueado = (bloqueados != null && bloqueados.contains(u)) ? " [BLOQUEADO]" : "";
-                salida.println((i + 1) + ". " + u + " " + estado + bloqueado);
-            }
-
-            salida.println("Escribe el nombre del usuario al que quieres enviar un mensaje:");
-            String destino = entrada.readLine();
-            if (destino == null || destino.trim().isEmpty()) {
-                salida.println("Usuario inválido.");
-                return;
-            }
-
-            destino = destino.trim();
-
-            if (!usuarioExisteEnArchivo(destino)) {
-                salida.println("❌ Error: El usuario '" + destino + "' no existe.");
-                return;
-            }
-
-            if (destino.equals(usuario)) {
-                salida.println("No puedes enviarte un mensaje a ti mismo.");
-                return;
-            }
-
-            Set<String> bloqueados = usuariosBloqueados.get(usuario);
-            if (bloqueados != null && bloqueados.contains(destino)) {
-                salida.println("❌ No puedes enviar mensajes a '" + destino + "' porque lo tienes bloqueado.");
-                return;
-            }
-
-            Set<String> bloqueadosPorDestino = usuariosBloqueados.get(destino);
-            if (bloqueadosPorDestino != null && bloqueadosPorDestino.contains(usuario)) {
-                salida.println("❌ No puedes enviar mensajes a '" + destino + "' porque te ha bloqueado.");
-                return;
-            }
-
-            salida.println("Escribe tu mensaje:");
-            String mensaje = entrada.readLine();
-            if (mensaje == null || mensaje.trim().isEmpty()) {
-                salida.println("Mensaje vacío. Cancelado.");
-                return;
-            }
-
-            String mensajeFinal = "[" + usuario + "]: " + mensaje.trim();
-            guardarMensaje(destino, mensajeFinal);
-            salida.println("✅ Mensaje enviado a " + destino);
-        }
-        
         private void juegoAdivinaNumero(BufferedReader entrada) throws IOException {
-            boolean seguirJugando = true;
+            boolean jugando = true;
 
-            while (seguirJugando) {
-                int numeroSecreto = 1 + (int)(Math.random() * 10);
-                int intentos = 3;
-                boolean acertado = false;
+            while (jugando) {
+                int numeroSecreto = (int) (Math.random() * 100) + 1;
+                int intentos = 0;
+                int maxIntentos = 7;
+                boolean adivinado = false;
 
-                salida.println("=== ADIVINA EL NÚMERO ===");
-                salida.println("Adivina el número entre 1 y 10");
-                salida.println("Tienes " + intentos + " intentos");
-                salida.println("(Puedes escribir 'menu' para volver al menú principal)");
+                salida.println("=== JUEGO: ADIVINA EL NÚMERO ===");
+                salida.println("🎯 He pensado un número entre 1 y 100");
+                salida.println("🎲 Tienes " + maxIntentos + " intentos para adivinarlo");
+                salida.println("💡 Escribe 'menu' para volver al menú principal\n");
 
-                while (intentos > 0 && !acertado) {
+                while (!adivinado && intentos < maxIntentos) {
+                    salida.println("Intento " + (intentos + 1) + "/" + maxIntentos);
                     salida.println("Ingresa tu número:");
-                    String resp = entrada.readLine();
-                    if (resp == null) return;
 
-                    if (resp.trim().equalsIgnoreCase("menu")) {
-                        salida.println("Volviendo al menú principal...");
+                    String respuesta = entrada.readLine();
+                    if (respuesta == null) return;
+
+                    if (respuesta.trim().equalsIgnoreCase("menu")) {
                         return;
                     }
 
                     try {
-                        int numero = Integer.parseInt(resp.trim());
-
-                        if (numero < 1 || numero > 10) {
-                            salida.println("El número debe estar entre 1 y 10");
-                            continue;
-                        }
+                        int numero = Integer.parseInt(respuesta.trim());
+                        intentos++;
 
                         if (numero == numeroSecreto) {
-                            salida.println("¡Correcto! El número era " + numeroSecreto);
-                            acertado = true;
+                            salida.println("🎉 ¡FELICIDADES! Adivinaste el número " + numeroSecreto);
+                            salida.println("✨ Lo lograste en " + intentos + " intento(s)");
+                            adivinado = true;
+                        } else if (numero < numeroSecreto) {
+                            salida.println("📈 El número es MAYOR que " + numero);
                         } else {
-                            intentos--;
-                            if (intentos > 0) {
-                                if (numero < numeroSecreto) {
-                                    salida.println("Es mayor. Te quedan " + intentos + " intentos");
-                                } else {
-                                    salida.println("Es menor. Te quedan " + intentos + " intentos");
-                                }
-                            }
+                            salida.println("📉 El número es MENOR que " + numero);
                         }
-                    } catch (NumberFormatException e) {
-                        salida.println("Por favor ingresa un número válido");
-                    }
-                }
 
-                if (!acertado) {
-                    salida.println("Perdiste. El número era: " + numeroSecreto);
+                        if (!adivinado && intentos == maxIntentos) {
+                            salida.println("😔 Se acabaron los intentos. El número era: " + numeroSecreto);
+                        }
+
+                    } catch (NumberFormatException e) {
+                        salida.println("❌ Por favor ingresa un número válido");
+                    }
                 }
 
                 salida.println("¿Quieres jugar otra vez? (s/n) o 'menu' para volver:");
-                String respuesta = entrada.readLine();
-
-                if (respuesta == null || respuesta.trim().equalsIgnoreCase("n") || 
-                    respuesta.trim().equalsIgnoreCase("menu")) {
-                    seguirJugando = false;
+                String continuar = entrada.readLine();
+                if (continuar == null || 
+                    continuar.trim().equalsIgnoreCase("n") || 
+                    continuar.trim().equalsIgnoreCase("menu")) {
+                    jugando = false;
                 }
             }
         }
 
-        private boolean esContrasenaSegura(String contrasena) {
-            if (contrasena.length() < 6) return false;
+        private void enviarMensajeUsuario(BufferedReader entrada) throws IOException {
+            List<String> todosUsuarios = obtenerTodosLosUsuarios();
+            List<String> usuariosDisponibles = new ArrayList<>();
 
-            boolean tieneLetra = false;
-            boolean tieneNumero = false;
-
-            for (char c : contrasena.toCharArray()) {
-                if (Character.isLetter(c)) tieneLetra = true;
-                else if (Character.isDigit(c)) tieneNumero = true;
+            // Filtrar usuarios (no incluir el propio usuario)
+            for (String u : todosUsuarios) {
+                if (!u.equals(usuario)) {
+                    usuariosDisponibles.add(u);
+                }
             }
 
-            return tieneLetra && tieneNumero;
-        }
-
-        private synchronized boolean guardarUsuario(String usuario, String password) {
-            try (PrintWriter pw = new PrintWriter(new FileWriter("usuarios.txt", true))) {
-                pw.println(usuario + ":" + password);
-                return true;
-            } catch (IOException e) {
-                return false;
+            if (usuariosDisponibles.isEmpty()) {
+                salida.println("❌ No hay otros usuarios registrados en el sistema.");
+                return;
             }
+
+            salida.println("=== USUARIOS DISPONIBLES ===");
+            for (int i = 0; i < usuariosDisponibles.size(); i++) {
+                String u = usuariosDisponibles.get(i);
+                String estado = clientes.containsKey(u) ? "(conectado)" : "(desconectado)";
+                salida.println((i + 1) + ". " + u + " " + estado);
+            }
+
+            salida.println("\nEscribe el nombre del usuario destinatario:");
+            String destinatario = entrada.readLine();
+            if (destinatario == null || destinatario.trim().isEmpty()) {
+                salida.println("❌ Nombre de destinatario vacío");
+                return;
+            }
+
+            destinatario = destinatario.trim();
+
+            // Verificar que el destinatario existe
+            if (!usuarioExisteEnArchivo(destinatario)) {
+                salida.println("❌ El usuario '" + destinatario + "' no existe");
+                return;
+            }
+
+            // Verificar que no es él mismo
+            if (destinatario.equals(usuario)) {
+                salida.println("❌ No puedes enviarte mensajes a ti mismo");
+                return;
+            }
+
+            // Verificar si el usuario actual está bloqueado por el destinatario
+            Set<String> bloqueadosPorDestinatario = usuariosBloqueados.get(destinatario);
+            if (bloqueadosPorDestinatario != null && bloqueadosPorDestinatario.contains(usuario)) {
+                salida.println("❌ No puedes enviar mensajes a " + destinatario + " (te ha bloqueado)");
+                return;
+            }
+
+            salida.println("✅ Destinatario válido: " + destinatario);
+            salida.println("Escribe tu mensaje:");
+
+            String mensaje = entrada.readLine();
+            if (mensaje == null || mensaje.trim().isEmpty()) {
+                salida.println("❌ Mensaje vacío");
+                return;
+            }
+
+            // Guardar el mensaje
+            guardarMensaje(destinatario, "De " + usuario + ": " + mensaje);
+            salida.println("✅ Mensaje enviado correctamente a " + destinatario);
         }
 
-        private boolean usuarioExiste(String usuario) {
-            try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
-                String linea;
-                while ((linea = br.readLine()) != null) {
-                    String[] partes = linea.split(":");
-                    if (partes.length > 0 && partes[0].equals(usuario)) {
-                        return true;
+        private void explorarArchivos(BufferedReader entrada) throws IOException {
+            // Obtener usuarios conectados (excluyendo al usuario actual)
+            List<String> usuariosConectados = new ArrayList<>();
+            for (String u : clientes.keySet()) {
+                if (!u.equals(usuario)) {
+                    usuariosConectados.add(u);
+                }
+            }
+
+            if (usuariosConectados.isEmpty()) {
+                salida.println("❌ No hay otros usuarios conectados actualmente.");
+                salida.println("🔙 Regresando al menú principal...");
+                // Retornar directamente sin esperar input
+                return;
+            }
+
+            boolean explorando = true;
+            while (explorando) {
+                salida.println("=== EXPLORAR ARCHIVOS DE OTROS USUARIOS ===");
+                salida.println("👥 Usuarios conectados disponibles:");
+
+                for (int i = 0; i < usuariosConectados.size(); i++) {
+                    salida.println((i + 1) + ". " + usuariosConectados.get(i));
+                }
+
+                salida.println("0. Volver al menú principal");
+                salida.println("Seleccione el número del usuario:");
+
+                String opcion = entrada.readLine();
+                if (opcion == null) break;
+
+                if (opcion.trim().equals("0")) {
+                    explorando = false;
+                    continue;
+                }
+
+                try {
+                    int index = Integer.parseInt(opcion.trim()) - 1;
+                    if (index >= 0 && index < usuariosConectados.size()) {
+                        String propietario = usuariosConectados.get(index);
+                        
+                        // Solicitar autorización (por ahora automática)
+                        // solicitarAutorizacionArchivos(usuario, propietario);
+                        
+                        mostrarArchivosUsuario(propietario, entrada);
+                    } else {
+                        salida.println("❌ Número fuera de rango");
+                        salida.println("Presiona Enter para continuar...");
+                        entrada.readLine();
                     }
+                } catch (NumberFormatException e) {
+                    salida.println("❌ Por favor ingrese un número válido");
+                    salida.println("Presiona Enter para continuar...");
+                    entrada.readLine();
                 }
-            } catch (IOException ignored) {}
-            return false;
+            }
         }
 
-        private boolean verificarLogin(String usuario, String password) {
+        private void mostrarArchivosUsuario(String propietario, BufferedReader entrada) throws IOException {
+            File archivoLista = new File("listas/" + propietario + "_archivos.txt");
+            
+            if (!archivoLista.exists()) {
+                crearListaArchivos(propietario);
+            }
+
+            // Mostrar la lista de archivos
+            try (BufferedReader br = new BufferedReader(new FileReader(archivoLista))) {
+                String linea;
+                salida.println("\n" + "=".repeat(50));
+                while ((linea = br.readLine()) != null) {
+                    salida.println(linea);
+                }
+                salida.println("=".repeat(50));
+            } catch (IOException e) {
+                salida.println("❌ Error leyendo la lista de archivos de " + propietario);
+            }
+
+            boolean navegando = true;
+            while (navegando) {
+                salida.println("\n🔽 OPCIONES:");
+                salida.println("1. Descargar un archivo");
+                salida.println("2. Actualizar lista de archivos");
+                salida.println("0. Volver a la lista de usuarios");
+                salida.println("Seleccione una opción:");
+
+                String opcion = entrada.readLine();
+                if (opcion == null) break;
+
+                switch (opcion.trim()) {
+                    case "0":
+                        navegando = false;
+                        break;
+                    case "1":
+                        descargarArchivo(propietario, entrada);
+                        break;
+                    case "2":
+                        crearListaArchivos(propietario);
+                        salida.println("✅ Lista actualizada");
+                        // Mostrar la lista actualizada
+                        try (BufferedReader br = new BufferedReader(new FileReader(archivoLista))) {
+                            String linea;
+                            salida.println("\n" + "=".repeat(50));
+                            while ((linea = br.readLine()) != null) {
+                                salida.println(linea);
+                            }
+                            salida.println("=".repeat(50));
+                        }
+                        break;
+                    default:
+                        salida.println("❌ Opción inválida");
+                }
+            }
+        }
+
+        private void descargarArchivo(String propietario, BufferedReader entrada) throws IOException {
+            salida.println("📎 Ingresa el nombre exacto del archivo (con extensión .txt):");
+            String nombreArchivo = entrada.readLine();
+            
+            if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+                salida.println("❌ Nombre de archivo vacío");
+                return;
+            }
+
+            nombreArchivo = nombreArchivo.trim();
+            
+            if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+                salida.println("❌ Solo se pueden descargar archivos .txt");
+                return;
+            }
+
+            File archivo = new File("archivos/" + propietario + "/" + nombreArchivo);
+            
+            if (!archivo.exists()) {
+                salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
+                return;
+            }
+
+            salida.println("📄 Archivo encontrado: " + nombreArchivo);
+            salida.println("📊 Tamaño: " + archivo.length() + " bytes");
+            salida.println("¿Confirma la descarga? (s/n):");
+
+            String confirmacion = entrada.readLine();
+            if (confirmacion != null && confirmacion.trim().toLowerCase().startsWith("s")) {
+                // Simular descarga mostrando el contenido
+                salida.println("\n" + "=".repeat(60));
+                salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
+                salida.println("👤 PROPIETARIO: " + propietario);
+                salida.println("=".repeat(60));
+
+                try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+                    String linea;
+                    int numeroLinea = 1;
+                    while ((linea = br.readLine()) != null) {
+                        salida.println(String.format("%3d | %s", numeroLinea, linea));
+                        numeroLinea++;
+                    }
+                } catch (IOException e) {
+                    salida.println("❌ Error leyendo el archivo: " + e.getMessage());
+                }
+
+                salida.println("=".repeat(60));
+                salida.println("✅ Descarga completada");
+                salida.println("💾 En un sistema real, el archivo se guardaría en tu dispositivo");
+            } else {
+                salida.println("❌ Descarga cancelada");
+            }
+            
+            salida.println("Presiona Enter para continuar...");
+            entrada.readLine();
+        }
+
+        // Métodos auxiliares que faltan
+        private static boolean verificarLogin(String usuario, String password) {
             try (BufferedReader br = new BufferedReader(new FileReader("usuarios.txt"))) {
                 String linea;
                 while ((linea = br.readLine()) != null) {
@@ -1034,248 +1201,34 @@ private void mostrarBandeja(BufferedReader entrada) throws IOException {
             return false;
         }
 
-       private void explorarArchivos(BufferedReader entrada) throws IOException {
-    boolean explorando = true;
-    
-    while (explorando) {
-        // Mostrar usuarios conectados (excluyendo al usuario actual)
-        List<String> usuariosConectados = new ArrayList<>();
-        for (String u : clientes.keySet()) {
-            if (!u.equals(usuario)) {
-                usuariosConectados.add(u);
-            }
+        private static boolean usuarioExiste(String usuario) {
+            return usuarioExisteEnArchivo(usuario);
         }
-        
-        if (usuariosConectados.isEmpty()) {
-            salida.println("No hay otros usuarios conectados para explorar archivos.");
-            salida.println("Presiona Enter para volver al menú principal...");
-            entrada.readLine();
-            return;
-        }
-        
-        salida.println("=== EXPLORAR ARCHIVOS DE USUARIOS ===");
-        salida.println("Usuarios conectados disponibles:");
-        for (int i = 0; i < usuariosConectados.size(); i++) {
-            salida.println((i + 1) + ". " + usuariosConectados.get(i));
-        }
-        salida.println("0. Volver al menú principal");
-        salida.println("Seleccione el número del usuario a explorar:");
-        
-        String opcion = entrada.readLine();
-        if (opcion == null) break;
-        
-        try {
-            int indice = Integer.parseInt(opcion.trim());
+
+        private static boolean esContrasenaSegura(String password) {
+            if (password.length() < 6) return false;
             
-            if (indice == 0) {
-                explorando = false;
-            } else if (indice >= 1 && indice <= usuariosConectados.size()) {
-                String usuarioObjetivo = usuariosConectados.get(indice - 1);
-                explorarArchivosDeUsuario(entrada, usuarioObjetivo);
-            } else {
-                salida.println("Opción inválida. Seleccione un número válido.");
-                salida.println("Presiona Enter para continuar...");
-                entrada.readLine();
+            boolean tieneLetra = false;
+            boolean tieneNumero = false;
+            
+            for (char c : password.toCharArray()) {
+                if (Character.isLetter(c)) tieneLetra = true;
+                if (Character.isDigit(c)) tieneNumero = true;
             }
-        } catch (NumberFormatException e) {
-            salida.println("Por favor ingrese un número válido.");
-            salida.println("Presiona Enter para continuar...");
-            entrada.readLine();
+            
+            return tieneLetra && tieneNumero;
         }
-    }
-}
 
-private void explorarArchivosDeUsuario(BufferedReader entrada, String usuarioObjetivo) throws IOException {
-    ClienteInfo clienteObjetivo = clientes.get(usuarioObjetivo);
-    
-    // Solicitar lista de archivos al usuario objetivo
-    clienteObjetivo.salida.println("FILE_LIST_REQUEST:" + usuario);
-    
-    salida.println("Solicitando lista de archivos de " + usuarioObjetivo + "...");
-    salida.println("Esperando respuesta...");
-    
-    // Esperar un momento para la respuesta
-    try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
-    
-    // Simular el proceso de exploración (en una implementación real, 
-    // esto requeriría un mecanismo de sincronización más sofisticado)
-    boolean explorandoUsuario = true;
-    
-    while (explorandoUsuario) {
-        salida.println("\n=== ARCHIVOS DE " + usuarioObjetivo.toUpperCase() + " ===");
-        salida.println("(La lista de archivos se muestra en tiempo real)");
-        salida.println("\nOpciones:");
-        salida.println("1. Solicitar archivo específico");
-        salida.println("2. Actualizar lista de archivos");  
-        salida.println("3. Volver a la lista de usuarios");
-        salida.println("Seleccione una opción (1-3):");
-        
-        String opcion = entrada.readLine();
-        if (opcion == null) break;
-        
-        switch (opcion.trim()) {
-            case "1":
-                solicitarArchivoEspecifico(entrada, usuarioObjetivo, clienteObjetivo);
-                break;
-            case "2":
-                clienteObjetivo.salida.println("FILE_LIST_REQUEST:" + usuario);
-                salida.println("Lista actualizada. Revisa tu bandeja de mensajes para ver los archivos disponibles.");
-                salida.println("Presiona Enter para continuar...");
-                entrada.readLine();
-                break;
-            case "3":
-                explorandoUsuario = false;
-                break;
-            default:
-                salida.println("Opción inválida. Seleccione 1, 2 o 3.");
-                salida.println("Presiona Enter para continuar...");
-                entrada.readLine();
+        private static boolean guardarUsuario(String usuario, String password) {
+            try (PrintWriter pw = new PrintWriter(new FileWriter("usuarios.txt", true))) {
+                pw.println(usuario + ":" + password);
+                return true;
+            } catch (IOException e) {
+                return false;
+            }
         }
-    }
-}
 
-private void solicitarArchivoEspecifico(BufferedReader entrada, String usuarioObjetivo, ClienteInfo clienteObjetivo) throws IOException {
-    salida.println("Ingrese el nombre exacto del archivo (con extensión .txt):");
-    salida.println("Ejemplo: documento.txt, notas.txt, etc.");
-    salida.println("Archivo:");
-    
-    String nombreArchivo = entrada.readLine();
-    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
-        salida.println("Nombre de archivo inválido.");
-        salida.println("Presiona Enter para continuar...");
-        entrada.readLine();
-        return;
-    }
-    
-    nombreArchivo = nombreArchivo.trim();
-    
-    if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
-        salida.println("❌ Solo se pueden descargar archivos .txt");
-        salida.println("Agregando extensión .txt automáticamente...");
-        nombreArchivo += ".txt";
-    }
-    
-    // Confirmar descarga
-    salida.println("¿Confirma la descarga del archivo '" + nombreArchivo + "' de " + usuarioObjetivo + "? (s/n):");
-    String confirmacion = entrada.readLine();
-    
-    if (confirmacion != null && confirmacion.trim().toLowerCase().startsWith("s")) {
-        // Solicitar el archivo
-        clienteObjetivo.salida.println("FILE_TRANSFER_REQUEST:" + usuario + ":" + nombreArchivo);
-        
-        salida.println("✅ Solicitud enviada a " + usuarioObjetivo);
-        salida.println("El archivo se descargará automáticamente si está disponible.");
-        salida.println("Revisa tu directorio local para el archivo descargado.");
-        salida.println("Presiona Enter para continuar...");
-        entrada.readLine();
-    } else {
-        salida.println("Descarga cancelada.");
-        salida.println("Presiona Enter para continuar...");
-        entrada.readLine();
-    }
-}
-        private void listarArchivosUsuario(BufferedReader entrada) throws IOException {
-    // Mostrar usuarios conectados
-    List<String> usuariosConectados = new ArrayList<>();
-    for (String u : clientes.keySet()) {
-        if (!u.equals(usuario)) {
-            usuariosConectados.add(u);
-        }
-    }
-    
-    if (usuariosConectados.isEmpty()) {
-        salida.println("No hay otros usuarios conectados.");
-        return;
-    }
-    
-    salida.println("=== USUARIOS CONECTADOS ===");
-    for (int i = 0; i < usuariosConectados.size(); i++) {
-        salida.println((i + 1) + ". " + usuariosConectados.get(i));
-    }
-    
-    salida.println("Ingrese el nombre del usuario:");
-    String usuarioObjetivo = entrada.readLine();
-    if (usuarioObjetivo == null || usuarioObjetivo.trim().isEmpty()) {
-        salida.println("Usuario inválido.");
-        return;
-    }
-    
-    usuarioObjetivo = usuarioObjetivo.trim();
-    
-   
-    if (!clientes.containsKey(usuarioObjetivo)) {
-        salida.println("El usuario '" + usuarioObjetivo + "' no está conectado.");
-        return;
-    }
-    
-    
-    ClienteInfo clienteObjetivo = clientes.get(usuarioObjetivo);
-    clienteObjetivo.salida.println("FILE_LIST_REQUEST:" + usuario);
-    
-    salida.println("Solicitando lista de archivos a " + usuarioObjetivo + "...");
-    salida.println("La respuesta aparecerá en tu bandeja de entrada.");
-}
-        
-        
-    private void descargarArchivoUsuario(BufferedReader entrada) throws IOException {
-    // Mostrar usuarios conectados
-    List<String> usuariosConectados = new ArrayList<>();
-    for (String u : clientes.keySet()) {
-        if (!u.equals(usuario)) {
-            usuariosConectados.add(u);
-        }
-    }
-    
-    if (usuariosConectados.isEmpty()) {
-        salida.println("No hay otros usuarios conectados.");
-        return;
-    }
-    
-    salida.println("=== USUARIOS CONECTADOS ===");
-    for (int i = 0; i < usuariosConectados.size(); i++) {
-        salida.println((i + 1) + ". " + usuariosConectados.get(i));
-    }
-    
-    salida.println("Ingrese el nombre del usuario:");
-    String usuarioObjetivo = entrada.readLine();
-    if (usuarioObjetivo == null || usuarioObjetivo.trim().isEmpty()) {
-        salida.println("Usuario inválido.");
-        return;
-    }
-    
-    usuarioObjetivo = usuarioObjetivo.trim();
-    
-    // Verificar que el usuario esté conectado
-    if (!clientes.containsKey(usuarioObjetivo)) {
-        salida.println("❌ El usuario '" + usuarioObjetivo + "' no está conectado.");
-        return;
-    }
-    
-    salida.println("Ingrese el nombre del archivo (con extensión .txt):");
-    String nombreArchivo = entrada.readLine();
-    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
-        salida.println("Nombre de archivo inválido.");
-        return;
-    }
-    
-    nombreArchivo = nombreArchivo.trim();
-    if (!nombreArchivo.endsWith(".txt")) {
-        salida.println("❌ Solo se pueden descargar archivos .txt");
-        return;
-    }
-    
-    // Solicitar el archivo al cliente objetivo
-    ClienteInfo clienteObjetivo = clientes.get(usuarioObjetivo);
-    clienteObjetivo.salida.println("FILE_TRANSFER_REQUEST:" + usuario + ":" + nombreArchivo);
-    
-    salida.println("Solicitando archivo '" + nombreArchivo + "' a " + usuarioObjetivo + "...");
-    salida.println("El archivo se guardará en tu directorio si está disponible.");
-}    
-        
-        
-        
-        
-        private String hashPassword(String password) {
+        private static String hashPassword(String password) {
             try {
                 MessageDigest md = MessageDigest.getInstance("SHA-256");
                 byte[] hash = md.digest(password.getBytes());
@@ -1285,7 +1238,7 @@ private void solicitarArchivoEspecifico(BufferedReader entrada, String usuarioOb
                 }
                 return sb.toString();
             } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
+                return password; // Fallback sin hash en caso de error
             }
         }
     }
