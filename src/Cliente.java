@@ -7,6 +7,7 @@ public class Cliente {
     private static volatile boolean expulsado = false;
     private static volatile boolean logueado = false;
     private static volatile boolean enMenu = true;
+    private static String usuarioActual = "";
 
     public static void main(String[] args) {
         try (Socket socket = new Socket(HOST, PUERTO);
@@ -80,12 +81,14 @@ public class Cliente {
         enMenu = true; 
         String linea;
         
+        // Manejar solicitudes especiales del servidor
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
                 return;
             }
             
+            // Manejar notificaciones mientras está en el menú
             if (enMenu && linea.startsWith("🔔 NUEVO MENSAJE:")) {
                 System.out.println("\n" + linea);
                 String mensaje = entrada.readLine();
@@ -95,29 +98,13 @@ public class Cliente {
                 continue;
             }
 
-            if (linea.startsWith("FILE_LIST_REQUEST:")) {
+            // Manejar solicitud de autorización para acceso a archivos
+            if (linea.startsWith("AUTHORIZATION_REQUEST:")) {
                 String solicitante = linea.split(":", 2)[1];
-                manejarSolicitudListaArchivos(salida, solicitante);
+                manejarSolicitudAutorizacion(salida, solicitante);
                 continue;
             }
 
-            if (linea.startsWith("FILE_TRANSFER_REQUEST:")) {
-                String[] partes = linea.split(":", 3);
-                String solicitante = partes[1];
-                String nombreArchivo = partes[2];
-                manejarSolicitudTransferencia(salida, solicitante, nombreArchivo);
-                continue;
-            }
-
-            if (linea.startsWith("FILE_CONTENT:")) {
-                String[] partes = linea.split(":", 4);
-                String remitente = partes[1];
-                String nombreArchivo = partes[2];
-                String contenido = partes[3];
-                guardarArchivoRecibido(nombreArchivo, contenido, remitente);
-                continue;
-            }
-            
             System.out.println(linea);
             if (linea.toLowerCase().contains("seleccione opción")) break;
         }
@@ -158,6 +145,7 @@ public class Cliente {
                 String sesionCerrada = entrada.readLine();
                 System.out.println(sesionCerrada);
                 logueado = false;
+                usuarioActual = "";
                 break;
             default:
                 String error = entrada.readLine();
@@ -197,7 +185,12 @@ public class Cliente {
             return false;
         }
         
-        return respuesta.contains("Bienvenido");
+        if (respuesta.contains("Bienvenido")) {
+            usuarioActual = usuario.trim();
+            return true;
+        }
+        
+        return false;
     }
 
     private static void registro(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
@@ -508,59 +501,72 @@ public class Cliente {
         }
     }
 
-    private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        while (!expulsado) {
-            String linea;
-            
-            while ((linea = entrada.readLine()) != null) {
-                if (linea.equals("DISCONNECT")) {
-                    expulsado = true;
-                    return;
-                }
-                
-                System.out.println(linea);
-                
-                if (linea.toLowerCase().contains("no hay otros usuarios conectados")) {
-                    System.out.print("");
-                    String enter = teclado.readLine();
-                    return;
-                }
-                
-                if (linea.toLowerCase().contains("seleccione el número del usuario") ||
-                    linea.toLowerCase().contains("seleccione una opción") ||
-                    linea.toLowerCase().contains("archivo:")) {
-                    break;
-                }
-            }
-
-            if (expulsado) return;
-
-            System.out.print("> ");
-            String respuesta = teclado.readLine();
-            if (respuesta == null || expulsado) break;
-
-            salida.println(respuesta);
-
-            if (respuesta.trim().equals("0")) {
+   // FUNCIONALIDAD CORREGIDA: Explorar archivos con manejo correcto del flujo
+private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    while (!expulsado) {
+        String linea;
+        
+        // Leer todas las líneas del servidor
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
                 return;
-            } else if (respuesta.trim().matches("\\d+")) {
-                continue;
-            } else if (respuesta.trim().equals("3")) {
-                continue;
-            } else if (respuesta.trim().toLowerCase().startsWith("s") || 
-                      respuesta.trim().toLowerCase().startsWith("n")) {
-                leerRespuestaServidor(entrada);
-            } else {
-                leerRespuestaServidor(entrada);
+            }
+            
+            System.out.println(linea);
+            
+            // Si no hay usuarios conectados, volver automáticamente
+            if (linea.toLowerCase().contains("regresando al menú principal")) {
+                return; // Volver al menú principal automáticamente
+            }
+            
+            // Si necesita selección de usuario
+            if (linea.toLowerCase().contains("seleccione el número del usuario")) {
+                break; // Salir para pedir input
+            }
+            
+            // Si necesita otras opciones
+            if (linea.toLowerCase().contains("seleccione una opción")) {
+                break;
+            }
+            
+            // Si pide nombre de archivo
+            if (linea.toLowerCase().contains("ingresa el nombre exacto del archivo")) {
+                break;
+            }
+            
+            // Si pide confirmación de descarga
+            if (linea.toLowerCase().contains("confirma la descarga")) {
+                break;
             }
         }
-    }
 
-    private static void leerRespuestaServidor(BufferedReader entrada) throws IOException {
+        if (expulsado) return;
+        
+        // Si llegamos aquí, necesitamos input del usuario
+        System.out.print("> ");
+        String respuesta = teclado.readLine();
+        if (respuesta == null || expulsado) break;
+
+        salida.println(respuesta);
+
+        // Si elige volver al menú principal (opción 0)
+        if (respuesta.trim().equals("0")) {
+            return;
+        }
+        
+        // Para confirmaciones de descarga
+        if (respuesta.trim().toLowerCase().startsWith("s") || 
+            respuesta.trim().toLowerCase().startsWith("n")) {
+            leerRespuestaDescarga(entrada);
+        }
+    }
+}
+    private static void leerRespuestaDescarga(BufferedReader entrada) throws IOException {
         String linea;
         int lineasLeidas = 0;
         
-        while ((linea = entrada.readLine()) != null && lineasLeidas < 10) {
+        while ((linea = entrada.readLine()) != null && lineasLeidas < 15) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
                 return;
@@ -569,133 +575,65 @@ public class Cliente {
             System.out.println(linea);
             lineasLeidas++;
             
-            if (linea.toLowerCase().contains("presiona enter para continuar") ||
-                linea.toLowerCase().contains("presiona enter para volver")) {
+            if (linea.toLowerCase().contains("presiona enter para continuar")) {
                 break;
             }
             
-            if (linea.trim().isEmpty() && lineasLeidas > 2) {
+            if (linea.trim().isEmpty() && lineasLeidas > 3) {
                 break;
             }
         }
     }
-    
-    // MÉTODOS PARA MANEJO DE ARCHIVOS
-    private static void manejarSolicitudListaArchivos(PrintWriter salida, String solicitante) {
-        System.out.println("\n📁 " + solicitante + " está explorando tus archivos...");
+
+    // NUEVA FUNCIONALIDAD: Manejo de autorización para acceso a archivos
+    private static void manejarSolicitudAutorizacion(PrintWriter salida, String solicitante) {
+        System.out.println("\n════════════════════════════════");
+        System.out.println("🔒 SOLICITUD DE ACCESO A ARCHIVOS");
+        System.out.println("════════════════════════════════");
+        System.out.println("📋 " + solicitante + " quiere acceder a tu lista de archivos.");
+        System.out.println("💭 ¿Deseas autorizar el acceso?");
+        System.out.println("");
+        System.out.println("✅ Esta solicitud se procesará automáticamente por ahora.");
+        System.out.println("🔮 Funcionalidad de autorización manual será implementada próximamente.");
+        System.out.println("════════════════════════════════");
         
-        File directorio = new File(".");
-        File[] archivos = directorio.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
-        
-        StringBuilder lista = new StringBuilder();
-        lista.append("=== ARCHIVOS DISPONIBLES ===\n");
-        
-        if (archivos == null || archivos.length == 0) {
-            lista.append("📭 No hay archivos .txt disponibles en este directorio.\n");
-        } else {
-            lista.append("📂 Archivos .txt encontrados:\n");
-            for (int i = 0; i < archivos.length; i++) {
-                long bytes = archivos[i].length();
-                String tamaño = bytes < 1024 ? bytes + " bytes" : 
-                              bytes < 1048576 ? (bytes/1024) + " KB" : 
-                              (bytes/1048576) + " MB";
+        // Por ahora, autorizar automáticamente (en el futuro se puede mejorar)
+        // salida.println("AUTHORIZATION_RESPONSE:" + solicitante + ":GRANTED");
+    }
+
+    // FUNCIONALIDAD AUXILIAR: Crear archivos de ejemplo para testing
+    public static void crearArchivosEjemplo() {
+        try {
+            // Crear directorio de archivos para el usuario
+            File directorioUsuario = new File("archivos/" + usuarioActual);
+            if (!directorioUsuario.exists()) {
+                directorioUsuario.mkdirs();
                 
-                lista.append((i + 1) + ". 📄 " + archivos[i].getName() + 
-                            " (" + tamaño + ")\n");
+                // Crear algunos archivos de ejemplo
+                try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "documento1.txt")))) {
+                    pw.println("Este es un documento de ejemplo.");
+                    pw.println("Contiene información importante.");
+                    pw.println("Creado por: " + usuarioActual);
+                }
+                
+                try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "notas.txt")))) {
+                    pw.println("=== MIS NOTAS ===");
+                    pw.println("- Recordar completar el proyecto");
+                    pw.println("- Revisar mensajes importantes");
+                    pw.println("- Actualizar lista de contactos");
+                }
+                
+                try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "configuracion.txt")))) {
+                    pw.println("# Archivo de configuración");
+                    pw.println("usuario=" + usuarioActual);
+                    pw.println("tema=oscuro");
+                    pw.println("idioma=español");
+                }
+                
+                System.out.println("📁 Archivos de ejemplo creados en: " + directorioUsuario.getPath());
             }
-            lista.append("\nPara descargar un archivo, " + solicitante + " debe solicitar el nombre exacto.\n");
-        }
-        
-        guardarMensajeParaUsuario(salida, solicitante, lista.toString());
-        System.out.println("✅ Lista de archivos enviada a " + solicitante);
-    }
-
-    private static void manejarSolicitudTransferencia(PrintWriter salida, String solicitante, String nombreArchivo) {
-        System.out.println("\n📤 " + solicitante + " solicita descargar: " + nombreArchivo);
-        
-        File archivo = new File(nombreArchivo);
-        
-        if (!archivo.exists()) {
-            enviarError(salida, solicitante, "❌ El archivo '" + nombreArchivo + "' no existe en mi directorio.");
-            System.out.println(" Archivo no encontrado: " + nombreArchivo);
-            return;
-        }
-        
-        if (!archivo.isFile()) {
-            enviarError(salida, solicitante, " '" + nombreArchivo + "' no es un archivo válido.");
-            System.out.println(" No es un archivo válido: " + nombreArchivo);
-            return;
-        }
-        
-        if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
-            enviarError(salida, solicitante, " Solo se pueden transferir archivos .txt por seguridad.");
-            System.out.println(" Tipo de archivo no permitido: " + nombreArchivo);
-            return;
-        }
-        
-        if (archivo.length() > 1048576) {
-            enviarError(salida, solicitante, " El archivo es demasiado grande (máximo 1MB).");
-            System.out.println(" Archivo muy grande: " + nombreArchivo);
-            return;
-        }
-        
-        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
-            StringBuilder contenido = new StringBuilder();
-            String linea;
-            int lineas = 0;
-            
-            while ((linea = br.readLine()) != null && lineas < 1000) {
-                contenido.append(linea).append("\n");
-                lineas++;
-            }
-            
-            salida.println("SEND_FILE:" + solicitante + ":" + nombreArchivo + ":" + contenido.toString());
-            System.out.println(" Archivo '" + nombreArchivo + "' enviado a " + solicitante + " (" + lineas + " líneas)");
-            
         } catch (IOException e) {
-            enviarError(salida, solicitante, " Error al leer el archivo: " + e.getMessage());
-            System.out.println(" Error leyendo archivo " + nombreArchivo + ": " + e.getMessage());
+            System.err.println("Error creando archivos de ejemplo: " + e.getMessage());
         }
-    }
-
-    private static void guardarArchivoRecibido(String nombreArchivo, String contenido, String remitente) {
-        File directorioDescargas = new File("descargas");
-        if (!directorioDescargas.exists()) {
-            directorioDescargas.mkdirs();
-        }
-        
-        String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
-        String nombreFinal = "descargas/[" + timestamp + "]_" + remitente + "_" + nombreArchivo;
-        
-        try (PrintWriter pw = new PrintWriter(new FileWriter(nombreFinal))) {
-            pw.print(contenido);
-            
-            File archivoGuardado = new File(nombreFinal);
-            long tamaño = archivoGuardado.length();
-            String tamañoStr = tamaño < 1024 ? tamaño + " bytes" : 
-                              tamaño < 1048576 ? (tamaño/1024) + " KB" : 
-                              (tamaño/1048576) + " MB";
-            
-            System.out.println("\n📥 ¡ARCHIVO DESCARGADO EXITOSAMENTE!");
-            System.out.println("   Remitente: " + remitente);
-            System.out.println("   Archivo original: " + nombreArchivo);
-            System.out.println("   Guardado como: " + nombreFinal);
-            System.out.println("   Tamaño: " + tamañoStr);
-            System.out.println("   ✅ Descarga completada");
-            
-        } catch (IOException e) {
-            System.out.println("\nERROR AL GUARDAR ARCHIVO");
-            System.out.println("   Remitente: " + remitente);
-            System.out.println("   Archivo: " + nombreArchivo);
-            System.out.println("   Error: " + e.getMessage());
-        }
-    }
-    
-    private static void enviarError(PrintWriter salida, String destinatario, String mensaje) {
-        guardarMensajeParaUsuario(salida, destinatario, mensaje);
-    }
-
-    private static void guardarMensajeParaUsuario(PrintWriter salida, String destinatario, String mensaje) {
-        salida.println("SEND_MESSAGE:" + destinatario + ":" + mensaje);
     }
 }
