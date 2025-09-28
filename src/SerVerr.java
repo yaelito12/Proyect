@@ -65,7 +65,7 @@ public class SerVerr {
     }
 
     // NUEVA FUNCIONALIDAD: Crear archivo de lista de archivos para cada usuario
-  private static void crearListaArchivos(String usuario) {
+ private static void crearListaArchivos(String usuario) {
     File directorioUsuario = new File("archivos/" + usuario);
     File archivoLista = new File("listas/" + usuario + "_archivos.txt");
     
@@ -82,26 +82,58 @@ public class SerVerr {
             pw.println("📭 No hay archivos .txt disponibles.");
         } else {
             pw.println("📂 Archivos .txt disponibles:");
-            for (int i = 0; i < archivos.length; i++) {
-                long bytes = archivos[i].length();
-                String tamaño = bytes < 1024 ? bytes + " bytes" : 
-                              bytes < 1048576 ? (bytes/1024) + " KB" : 
-                              (bytes/1048576) + " MB";
-                
-                pw.println((i + 1) + ". 📄 " + archivos[i].getName() + " (" + tamaño + ")");
+            
+            // Separar archivos originales y descargados
+            java.util.List<File> archivosOriginales = new java.util.ArrayList<>();
+            java.util.List<File> archivosDescargados = new java.util.ArrayList<>();
+            
+            for (File archivo : archivos) {
+                if (archivo.getName().startsWith("de_")) {
+                    archivosDescargados.add(archivo);
+                } else {
+                    archivosOriginales.add(archivo);
+                }
+            }
+            
+            int contador = 1;
+            
+            // Mostrar archivos originales primero
+            if (!archivosOriginales.isEmpty()) {
+                pw.println("\n📝 ARCHIVOS ORIGINALES:");
+                for (File archivo : archivosOriginales) {
+                    long bytes = archivo.length();
+                    String tamaño = formatearTamaño(bytes);
+                    pw.println(contador + ". 📄 " + archivo.getName() + " (" + tamaño + ")");
+                    contador++;
+                }
+            }
+            
+            // Mostrar archivos descargados
+            if (!archivosDescargados.isEmpty()) {
+                pw.println("\n📥 ARCHIVOS DESCARGADOS:");
+                for (File archivo : archivosDescargados) {
+                    long bytes = archivo.length();
+                    String tamaño = formatearTamaño(bytes);
+                    
+                    // Extraer información del propietario original del nombre
+                    String propietarioOriginal = extraerPropietarioOriginal(archivo.getName());
+                    
+                    pw.println(contador + ". 📥 " + archivo.getName() + " (" + tamaño + ")");
+                    pw.println("    └── Descargado de: " + propietarioOriginal);
+                    contador++;
+                }
             }
         }
         pw.println("\nPara descargar un archivo, solicita el nombre exacto con extensión .txt");
+        pw.println("Los archivos descargados incluyen metadatos del propietario original");
     } catch (IOException e) {
         System.err.println("Error creando lista de archivos para " + usuario + ": " + e.getMessage());
     }
 }
-
-private static void solicitarAutorizacionArchivos(String solicitante, String propietario) {
-    ClienteInfo clientePropietario = clientes.get(propietario);
-    if (clientePropietario != null) {
-        clientePropietario.salida.println("AUTHORIZATION_REQUEST:" + solicitante);
-    }
+private static String formatearTamaño(long bytes) {
+    if (bytes < 1024) return bytes + " bytes";
+    if (bytes < 1048576) return (bytes/1024) + " KB";
+    return (bytes/1048576) + " MB";
 }
 
 
@@ -1184,33 +1216,104 @@ private void desbloquearUsuario(BufferedReader entrada) throws IOException {
 
     String confirmacion = entrada.readLine();
     if (confirmacion != null && confirmacion.trim().toLowerCase().startsWith("s")) {
-        // Simular descarga mostrando el contenido
-        salida.println("\n" + "=".repeat(60));
-        salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
-        salida.println("👤 PROPIETARIO: " + propietario);
-        salida.println("=".repeat(60));
+        
+        // NUEVA FUNCIONALIDAD: Copiar archivo al directorio del usuario actual
+        File directorioDestino = new File("archivos/" + usuario);
+        directorioDestino.mkdirs(); // Asegurar que el directorio existe
+        
+        // Generar nombre único para evitar conflictos
+        String nombreArchivoDestino = generarNombreUnico(propietario, nombreArchivo);
+        File archivoDestino = new File(directorioDestino, nombreArchivoDestino);
+        
+        try {
+            // Copiar el contenido del archivo
+            copiarArchivo(archivo, archivoDestino, propietario);
+            
+            // Mostrar el contenido como antes
+            salida.println("\n" + "=".repeat(60));
+            salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
+            salida.println("👤 PROPIETARIO: " + propietario);
+            salida.println("=".repeat(60));
 
-        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
-            String linea;
-            int numeroLinea = 1;
-            while ((linea = br.readLine()) != null) {
-                salida.println(String.format("%3d | %s", numeroLinea, linea));
-                numeroLinea++;
+            try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+                String linea;
+                int numeroLinea = 1;
+                while ((linea = br.readLine()) != null) {
+                    salida.println(String.format("%3d | %s", numeroLinea, linea));
+                    numeroLinea++;
+                }
+            } catch (IOException e) {
+                salida.println("❌ Error leyendo el archivo: " + e.getMessage());
             }
-        } catch (IOException e) {
-            salida.println("❌ Error leyendo el archivo: " + e.getMessage());
-        }
 
-        salida.println("=".repeat(60));
-        salida.println("✅ Descarga completada");
-        salida.println("💾 En un sistema real, el archivo se guardaría en tu dispositivo");
+            salida.println("=".repeat(60));
+            salida.println("✅ Descarga completada");
+            salida.println("📁 Archivo copiado como: " + nombreArchivoDestino);
+            salida.println("💾 El archivo ahora está disponible en 'Gestionar mis archivos'");
+            
+        } catch (IOException e) {
+            salida.println("❌ Error copiando el archivo: " + e.getMessage());
+        }
+        
     } else {
         salida.println("❌ Descarga cancelada");
     }
-    
-    // Removed "Presiona Enter para continuar..." - now it flows back naturally
 }
 
+private String generarNombreUnico(String propietario, String nombreOriginal) {
+    String nombreBase = nombreOriginal;
+    String extension = "";
+    
+    // Separar nombre y extensión
+    int puntoIndex = nombreOriginal.lastIndexOf('.');
+    if (puntoIndex > 0) {
+        nombreBase = nombreOriginal.substring(0, puntoIndex);
+        extension = nombreOriginal.substring(puntoIndex);
+    }
+    
+    // Agregar prefijo con el nombre del propietario
+    String nombreNuevo = "de_" + propietario + "_" + nombreBase + extension;
+    
+    // Verificar si ya existe y agregar número si es necesario
+    File directorioUsuario = new File("archivos/" + usuario);
+    File archivoTest = new File(directorioUsuario, nombreNuevo);
+    
+    int contador = 1;
+    while (archivoTest.exists()) {
+        nombreNuevo = "de_" + propietario + "_" + nombreBase + "_" + contador + extension;
+        archivoTest = new File(directorioUsuario, nombreNuevo);
+        contador++;
+    }
+    
+    return nombreNuevo;
+}
+private void copiarArchivo(File origen, File destino, String propietarioOriginal) throws IOException {
+    try (BufferedReader br = new BufferedReader(new FileReader(origen));
+         PrintWriter pw = new PrintWriter(new FileWriter(destino))) {
+        
+        // Agregar cabecera con información de descarga
+        pw.println("# ================================================================");
+        pw.println("# ARCHIVO DESCARGADO");
+        pw.println("# Propietario original: " + propietarioOriginal);
+        pw.println("# Descargado por: " + usuario);
+        pw.println("# Fecha de descarga: " + java.time.LocalDateTime.now().toString());
+        pw.println("# Archivo original: " + origen.getName());
+        pw.println("# ================================================================");
+        pw.println("");
+        pw.println("--- CONTENIDO ORIGINAL ---");
+        pw.println("");
+        
+        // Copiar contenido original
+        String linea;
+        while ((linea = br.readLine()) != null) {
+            pw.println(linea);
+        }
+        
+        pw.println("");
+        pw.println("--- FIN DEL CONTENIDO ORIGINAL ---");
+        pw.println("# Descarga completada exitosamente");
+    }
+}
   private void gestionarMisArchivos(BufferedReader entrada) throws IOException {
     boolean gestionando = true;
 
