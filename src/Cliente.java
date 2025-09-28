@@ -600,12 +600,14 @@ public class Cliente {
 }
 
     // MÉTODO MEJORADO: Gestionar mis archivos con mejor flujo de control
-  private static void gestionarMisArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+ private static void gestionarMisArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
     while (!expulsado) {
         String linea;
-        boolean esperandoInput = false;
+        boolean esperandoOpcionPrincipal = false;
+        boolean esperandoOpcionVisualizacion = false;
+        boolean esperandoNombreArchivo = false;
         
-        // Leer toda la respuesta del servidor
+        // Leer respuesta del servidor
         while ((linea = entrada.readLine()) != null) {
             if (linea.equals("DISCONNECT")) {
                 expulsado = true;
@@ -614,52 +616,69 @@ public class Cliente {
             
             System.out.println(linea);
             
-            // Detectar puntos donde necesitamos input
-            if (linea.toLowerCase().contains("seleccione una opción") ||
-                linea.toLowerCase().contains("ingresa el nombre") ||
-                linea.toLowerCase().contains("quieres crearlo") ||
-                linea.toLowerCase().contains("quieres sobrescribirlo") ||
-                linea.toLowerCase().contains("esta acción no se puede deshacer") ||
-                linea.toLowerCase().contains("confirma la descarga")) {
-                esperandoInput = true;
+            // Detectar menú principal de gestión de archivos
+            if (linea.toLowerCase().contains("=== gestionar mis archivos ===")) {
+                // Continuar leyendo hasta la línea de selección
+                continue;
+            }
+            
+            if (linea.toLowerCase().contains("seleccione una opción:")) {
+                esperandoOpcionPrincipal = true;
                 break;
             }
             
-            // Detectar cuando el servidor pide comandos de navegación
+            // Detectar menú de visualización
+            if (linea.toLowerCase().contains("=== opciones de visualización ===")) {
+                // Continuar leyendo hasta la línea de selección
+                continue;
+            }
+            
+            if (linea.toLowerCase().contains("selecciona una opción:")) {
+                esperandoOpcionVisualizacion = true;
+                break;
+            }
+            
+            // Detectar solicitud de nombre de archivo
+            if (linea.toLowerCase().contains("ingresa el nombre del archivo") ||
+                linea.toLowerCase().contains("ingresa el nombre del nuevo archivo")) {
+                esperandoNombreArchivo = true;
+                break;
+            }
+            
+            // Modo edición
+            if (linea.toLowerCase().contains("para terminar, escribe una línea que contenga solo: fin")) {
+                manejarEdicionArchivo(entrada, salida, teclado);
+                break;
+            }
+            
+            // Comandos de navegación para otros métodos
             if (linea.toLowerCase().contains("escribe 'volver' para regresar o 'salir' para el menú principal")) {
                 System.out.print("Comando: ");
                 String comando = teclado.readLine();
                 if (comando == null || expulsado) return;
                 
-                salida.println(comando); // Enviar comando al servidor
+                salida.println(comando);
                 
-                comando = comando.trim().toLowerCase();
-                if (comando.equals("salir")) {
-                    return; // Salir completamente al menú principal
-                } else if (comando.equals("volver") || comando.equals("menu")) {
-                    break; // Continuar el bucle para mostrar el menú de archivos
+                if (comando.trim().toLowerCase().equals("salir")) {
+                    return;
+                } else if (comando.trim().toLowerCase().equals("volver")) {
+                    break;
                 }
-                break;
-            }
-            
-            // Modo edición - leer líneas hasta FIN
-            if (linea.toLowerCase().contains("para terminar, escribe una línea que contenga solo: fin")) {
-                manejarEdicionArchivo(entrada, salida, teclado);
-                break;
             }
         }
 
         if (expulsado) return;
         
-        if (esperandoInput) {
+        // Manejar input según el contexto
+        if (esperandoOpcionPrincipal || esperandoOpcionVisualizacion || esperandoNombreArchivo) {
             System.out.print("> ");
             String respuesta = teclado.readLine();
             if (respuesta == null || expulsado) break;
 
             salida.println(respuesta);
 
-            // Si elige volver al menú principal
-            if (respuesta.trim().equals("0")) {
+            // Si elige salir del menú principal
+            if (esperandoOpcionPrincipal && respuesta.trim().equals("0")) {
                 return;
             }
         }

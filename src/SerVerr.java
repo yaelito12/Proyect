@@ -705,7 +705,7 @@ case "7":
                 salida.println("1. Ver usuarios bloqueados");
                 salida.println("2. Bloquear usuario");
                 salida.println("3. Desbloquear usuario");
-                salida.println("4. Volver al menú principal");
+                salida.println("4. Vol al menú principal");
                 salida.println("Seleccione opción (1-4):");
 
                 String opcion = entrada.readLine();
@@ -1211,7 +1211,7 @@ private void desbloquearUsuario(BufferedReader entrada) throws IOException {
     // Removed "Presiona Enter para continuar..." - now it flows back naturally
 }
 
-    private void gestionarMisArchivos(BufferedReader entrada) throws IOException {
+  private void gestionarMisArchivos(BufferedReader entrada) throws IOException {
     boolean gestionando = true;
 
     while (gestionando) {
@@ -1248,17 +1248,11 @@ private void desbloquearUsuario(BufferedReader entrada) throws IOException {
                 gestionando = false;
                 break;
             case "1":
-                verArchivo(entrada);
-                // Leer respuesta del cliente
-                String respuestaVer = entrada.readLine();
-                if (respuestaVer != null && respuestaVer.trim().toLowerCase().equals("salir")) {
-                    gestionando = false;
-                }
-                // Si es "volver" o cualquier otra cosa, continúa el bucle
+                verArchivo(entrada); // Este método maneja todo internamente
+                // NO hacer nada más aquí - verArchivo se encarga de todo
                 break;
             case "2":
                 editarArchivo(entrada);
-                // Leer respuesta del cliente
                 String respuestaEditar = entrada.readLine();
                 if (respuestaEditar != null && respuestaEditar.trim().toLowerCase().equals("salir")) {
                     gestionando = false;
@@ -1266,7 +1260,6 @@ private void desbloquearUsuario(BufferedReader entrada) throws IOException {
                 break;
             case "3":
                 crearNuevoArchivo(entrada);
-                // Leer respuesta del cliente
                 String respuestaCrear = entrada.readLine();
                 if (respuestaCrear != null && respuestaCrear.trim().toLowerCase().equals("salir")) {
                     gestionando = false;
@@ -1274,7 +1267,6 @@ private void desbloquearUsuario(BufferedReader entrada) throws IOException {
                 break;
             case "4":
                 eliminarArchivo(entrada);
-                // Leer respuesta del cliente
                 String respuestaEliminar = entrada.readLine();
                 if (respuestaEliminar != null && respuestaEliminar.trim().toLowerCase().equals("salir")) {
                     gestionando = false;
@@ -1290,47 +1282,96 @@ private void desbloquearUsuario(BufferedReader entrada) throws IOException {
     }
 }
 
- private void verArchivo(BufferedReader entrada) throws IOException {
+private void verArchivo(BufferedReader entrada) throws IOException {
     salida.println("📄 Ingresa el nombre del archivo (con extensión .txt):");
     String nombreArchivo = entrada.readLine();
     
     if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
         salida.println("❌ Nombre de archivo vacío");
-        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
         return;
     }
 
     nombreArchivo = nombreArchivo.trim();
     if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
         salida.println("❌ Solo se pueden gestionar archivos .txt");
-        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
         return;
     }
 
     File archivo = new File("archivos/" + usuario + "/" + nombreArchivo);
     if (!archivo.exists()) {
         salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
-        salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
         return;
     }
 
-    salida.println("\n" + "=".repeat(60));
-    salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
-    salida.println("=".repeat(60));
+    // Bucle para el menú de visualización
+    boolean viendoArchivo = true;
+    while (viendoArchivo) {
+        // Mostrar contenido del archivo
+        salida.println("\n" + "=".repeat(60));
+        salida.println("📁 CONTENIDO DEL ARCHIVO: " + nombreArchivo);
+        salida.println("=".repeat(60));
 
-    try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
-        String linea;
-        int numeroLinea = 1;
-        while ((linea = br.readLine()) != null) {
-            salida.println(String.format("%3d | %s", numeroLinea, linea));
-            numeroLinea++;
+        try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
+            String linea;
+            int numeroLinea = 1;
+            while ((linea = br.readLine()) != null) {
+                salida.println(String.format("%3d | %s", numeroLinea, linea));
+                numeroLinea++;
+            }
+        } catch (IOException e) {
+            salida.println("❌ Error leyendo el archivo: " + e.getMessage());
         }
-    } catch (IOException e) {
-        salida.println("❌ Error leyendo el archivo: " + e.getMessage());
-    }
 
-    salida.println("=".repeat(60));
-    salida.println("Escribe 'volver' para regresar o 'salir' para el menú principal:");
+        salida.println("=".repeat(60));
+        
+        // Menú de opciones para el archivo
+        salida.println("\n=== OPCIONES DE VISUALIZACIÓN ===");
+        salida.println("1. Ver archivo nuevamente");
+        salida.println("2. Ver otro archivo");
+        salida.println("0. Volver al menú de gestión de archivos");
+        salida.println("Selecciona una opción:");
+        
+        String opcionVer = entrada.readLine();
+        if (opcionVer == null) break;
+        
+        switch (opcionVer.trim()) {
+            case "0":
+                viendoArchivo = false;
+                return; // Volver al menú de gestión
+            case "1":
+                // Continuar el bucle para mostrar el archivo nuevamente
+                break;
+            case "2":
+                // Pedir nuevo nombre de archivo
+                salida.println("📄 Ingresa el nombre del nuevo archivo (con extensión .txt):");
+                String nuevoArchivo = entrada.readLine();
+                
+                if (nuevoArchivo == null || nuevoArchivo.trim().isEmpty()) {
+                    salida.println("❌ Nombre de archivo vacío");
+                    continue;
+                }
+                
+                nuevoArchivo = nuevoArchivo.trim();
+                if (!nuevoArchivo.toLowerCase().endsWith(".txt")) {
+                    salida.println("❌ Solo se pueden gestionar archivos .txt");
+                    continue;
+                }
+                
+                File nuevoArchivoFile = new File("archivos/" + usuario + "/" + nuevoArchivo);
+                if (!nuevoArchivoFile.exists()) {
+                    salida.println("❌ El archivo '" + nuevoArchivo + "' no existe");
+                    continue;
+                }
+                
+                // Cambiar al nuevo archivo
+                nombreArchivo = nuevoArchivo;
+                archivo = nuevoArchivoFile;
+                break;
+            default:
+                salida.println("❌ Opción inválida. Seleccione 0, 1 o 2.");
+                break;
+        }
+    }
 }
 // MÉTODO CORREGIDO para editarArchivo
 private void editarArchivo(BufferedReader entrada) throws IOException {
