@@ -348,62 +348,50 @@ public class Cliente {
         }
     }
 
-    private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
-        while (!expulsado) {
-            String linea;
-            
-            while ((linea = entrada.readLine()) != null) {
-                if (linea.equals("DISCONNECT")) {
-                    expulsado = true;
-                    return;
-                }
-                
-                if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
-                    entrada.readLine();
-                    continue; 
-                }
-                
-                System.out.println(linea);
-                
-                if (linea.toLowerCase().contains("escribir 'salir'") || 
-                    linea.toLowerCase().contains("escribir 'menu'")) break;
-            }
-
-            if (expulsado) return;
-
-            System.out.print("> ");
-            String comando = teclado.readLine();
-            if (comando == null || expulsado) break;
-
-            salida.println(comando);
-
-            if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
+  private static void bandeja(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    while (!expulsado) {
+        String linea;
+        
+        // Leer TODO lo que envía el servidor (bandeja + opciones)
+        while ((linea = entrada.readLine()) != null) {
+            if (linea.equals("DISCONNECT")) {
+                expulsado = true;
                 return;
             }
-
-            if (comando.trim().toLowerCase().startsWith("siguiente") ||
-                comando.trim().toLowerCase().startsWith("anterior") ||
-                comando.trim().toLowerCase().startsWith("pagina") ||
-                comando.trim().toLowerCase().startsWith("actualizar")) {
-                
-                String respuesta = entrada.readLine();
-                if (respuesta != null && !respuesta.equals("DISCONNECT")) {
-                    System.out.println(respuesta);
-                }
-            } else if (comando.trim().toLowerCase().startsWith("eliminar")) {
-                String respuesta = entrada.readLine();
-                if (respuesta != null && !respuesta.equals("DISCONNECT")) {
-                    System.out.println(respuesta);
-                }
-            } else {
-                String respuesta = entrada.readLine();
-                if (respuesta != null && !respuesta.equals("DISCONNECT")) {
-                    System.out.println(respuesta);
-                }
+            
+            // Ignorar notificaciones de nuevos mensajes mientras estamos viendo la bandeja
+            if (linea.startsWith("🔔 NUEVO MENSAJE:")) {
+                entrada.readLine(); // Consumir la segunda línea de la notificación
+                continue; 
+            }
+            
+            System.out.println(linea);
+            
+            // Detectar el final del output del servidor
+            if (linea.toLowerCase().contains("- 'menu' o 'salir' para volver al menú principal")) {
+                break;
             }
         }
-    }
 
+        if (expulsado) return;
+
+        // Pedir comando al usuario
+        System.out.print("> ");
+        String comando = teclado.readLine();
+        if (comando == null || expulsado) break;
+
+        // Enviar comando
+        salida.println(comando);
+
+        // Si el usuario quiere salir, terminar
+        if (comando.trim().equalsIgnoreCase("salir") || comando.trim().equalsIgnoreCase("menu")) {
+            return;
+        }
+
+        // El bucle continuará y leerá la nueva bandeja que el servidor enviará
+    }
+}
+  
   private static void juego(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
     boolean jugando = true;
     

@@ -681,9 +681,7 @@ case "7":
         clientes.put(usuario, new ClienteInfo(usuario, salida, socket));
         salida.println("Bienvenido " + usuario);
         System.out.println("Login exitoso: " + usuario);
-        
-        // Crear archivos de ejemplo si no existen
-        crearArchivosEjemplo(usuario);
+
         // Crear lista de archivos al loguearse
         crearListaArchivos(usuario);
         return true;
@@ -728,8 +726,7 @@ case "7":
 
     usuariosExpulsados.remove(u);
     
-    // Crear archivos de ejemplo para el nuevo usuario
-    crearArchivosEjemplo(u);
+   
     new File("listas").mkdirs();
     
     salida.println("Usuario registrado correctamente");
@@ -861,93 +858,97 @@ private void desbloquearUsuario(BufferedReader entrada) throws IOException {
             }
         }
 
-      private void mostrarBandeja(BufferedReader entrada) throws IOException {
-            boolean enBandeja = true;
-            int paginaActual = 1;
-            final int MENSAJES_POR_PAGINA = 10;
+ private void mostrarBandeja(BufferedReader entrada) throws IOException {
+    boolean enBandeja = true;
+    int paginaActual = 1;
+    final int MENSAJES_POR_PAGINA = 10;
 
-            while (enBandeja) {
-                List<String> mensajes = cargarMensajes(usuario);
-                int totalMensajes = mensajes.size();
-                int totalPaginas = (totalMensajes + MENSAJES_POR_PAGINA - 1) / MENSAJES_POR_PAGINA;
-
-                if (totalMensajes == 0) {
-                    salida.println("=== BANDEJA DE ENTRADA ===");
-                    salida.println("📭 No tienes mensajes");
-                    salida.println("\nComandos disponibles:");
-                    salida.println("- 'menu' o 'salir' para volver al menú principal");
-                    salida.println("- 'actualizar' para revisar nuevos mensajes");
-                } else {
-                    salida.println("=== BANDEJA DE ENTRADA ===");
-                    salida.println("📧 Tienes " + totalMensajes + " mensaje(s) - Página " + paginaActual + "/" + totalPaginas);
-                    salida.println("");
-
-                    int inicio = (paginaActual - 1) * MENSAJES_POR_PAGINA;
-                    int fin = Math.min(inicio + MENSAJES_POR_PAGINA, totalMensajes);
-
-                    for (int i = inicio; i < fin; i++) {
-                        salida.println((i + 1) + ". " + mensajes.get(i));
-                    }
-
-                    salida.println("\nComandos disponibles:");
-                    if (paginaActual > 1) salida.println("- 'anterior' para página anterior");
-                    if (paginaActual < totalPaginas) salida.println("- 'siguiente' para página siguiente");
-                    salida.println("- 'pagina N' para ir a página específica");
-                    salida.println("- 'eliminar N' para eliminar mensaje número N");
-                    salida.println("- 'actualizar' para revisar nuevos mensajes");
-                    salida.println("- 'menu' o 'salir' para volver al menú principal");
-                }
-
-                String comando = entrada.readLine();
-                if (comando == null) break;
-
-                comando = comando.trim().toLowerCase();
-
-                if (comando.equals("menu") || comando.equals("salir")) {
-                    enBandeja = false;
-                } else if (comando.equals("actualizar")) {
-                    salida.println("✅ Bandeja actualizada");
-                } else if (comando.equals("siguiente") && paginaActual < totalPaginas) {
-                    paginaActual++;
-                    salida.println("➡️ Página " + paginaActual);
-                } else if (comando.equals("anterior") && paginaActual > 1) {
-                    paginaActual--;
-                    salida.println("⬅️ Página " + paginaActual);
-                } else if (comando.startsWith("pagina ")) {
-                    try {
-                        int nuevaPagina = Integer.parseInt(comando.substring(7).trim());
-                        if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
-                            paginaActual = nuevaPagina;
-                            salida.println("📄 Página " + paginaActual);
-                        } else {
-                            salida.println("❌ Página fuera de rango (1-" + totalPaginas + ")");
-                        }
-                    } catch (NumberFormatException e) {
-                        salida.println("❌ Número de página inválido");
-                    }
-                } else if (comando.startsWith("eliminar ")) {
-                    try {
-                        int numeroMensaje = Integer.parseInt(comando.substring(9).trim());
-                        if (eliminarMensaje(usuario, numeroMensaje - 1)) {
-                            salida.println("✅ Mensaje eliminado correctamente");
-                            // Ajustar página si es necesario
-                            mensajes = cargarMensajes(usuario);
-                            totalPaginas = (mensajes.size() + MENSAJES_POR_PAGINA - 1) / MENSAJES_POR_PAGINA;
-                            if (paginaActual > totalPaginas && totalPaginas > 0) {
-                                paginaActual = totalPaginas;
-                            }
-                        } else {
-                            salida.println("❌ Error eliminando mensaje o número inválido");
-                        }
-                    } catch (NumberFormatException e) {
-                        salida.println("❌ Número de mensaje inválido");
-                    }
-                } else {
-                    salida.println("❌ Comando no reconocido");
-                }
-            }
+    while (enBandeja) {
+        List<String> mensajes = cargarMensajes(usuario);
+        int totalMensajes = mensajes.size();
+        int totalPaginas = (totalMensajes + MENSAJES_POR_PAGINA - 1) / MENSAJES_POR_PAGINA;
+        
+        // Asegurar que la página actual sea válida
+        if (totalPaginas > 0 && paginaActual > totalPaginas) {
+            paginaActual = totalPaginas;
         }
 
+        // Mostrar la bandeja
+        if (totalMensajes == 0) {
+            salida.println("=== BANDEJA DE ENTRADA ===");
+            salida.println("📭 No tienes mensajes");
+            salida.println("\nComandos disponibles:");
+            salida.println("- 'menu' o 'salir' para volver al menú principal");
+            salida.println("- 'actualizar' para revisar nuevos mensajes");
+        } else {
+            salida.println("=== BANDEJA DE ENTRADA ===");
+            salida.println("📧 Tienes " + totalMensajes + " mensaje(s) - Página " + paginaActual + "/" + totalPaginas);
+            salida.println("");
+
+            int inicio = (paginaActual - 1) * MENSAJES_POR_PAGINA;
+            int fin = Math.min(inicio + MENSAJES_POR_PAGINA, totalMensajes);
+
+            for (int i = inicio; i < fin; i++) {
+                salida.println((i + 1) + ". " + mensajes.get(i));
+            }
+
+            salida.println("\nComandos disponibles:");
+            if (paginaActual > 1) salida.println("- 'anterior' para página anterior");
+            if (paginaActual < totalPaginas) salida.println("- 'siguiente' para página siguiente");
+            salida.println("- 'pagina N' para ir a página específica");
+            salida.println("- 'eliminar N' para eliminar mensaje número N");
+            salida.println("- 'actualizar' para revisar nuevos mensajes");
+            salida.println("- 'menu' o 'salir' para volver al menú principal");
+        }
+
+        // Leer comando del usuario
+        String comando = entrada.readLine();
+        if (comando == null) break;
+
+        comando = comando.trim();
+        String comandoLower = comando.toLowerCase();
+
+        // Procesar comando
+        if (comandoLower.equals("menu") || comandoLower.equals("salir")) {
+            enBandeja = false;
+        } else if (comandoLower.equals("actualizar")) {
+            // Solo recargar, el bucle mostrará la bandeja actualizada
+            continue;
+        } else if (comandoLower.equals("siguiente")) {
+            if (paginaActual < totalPaginas) {
+                paginaActual++;
+            }
+        } else if (comandoLower.equals("anterior")) {
+            if (paginaActual > 1) {
+                paginaActual--;
+            }
+        } else if (comandoLower.startsWith("pagina ")) {
+            try {
+                int nuevaPagina = Integer.parseInt(comando.substring(7).trim());
+                if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+                    paginaActual = nuevaPagina;
+                }
+            } catch (NumberFormatException e) {
+                // Ignorar error, mantener página actual
+            }
+        } else if (comandoLower.startsWith("eliminar ")) {
+            try {
+                int numeroMensaje = Integer.parseInt(comando.substring(9).trim());
+                eliminarMensaje(usuario, numeroMensaje - 1);
+                // Recargar mensajes después de eliminar
+                mensajes = cargarMensajes(usuario);
+                totalPaginas = Math.max(1, (mensajes.size() + MENSAJES_POR_PAGINA - 1) / MENSAJES_POR_PAGINA);
+                if (paginaActual > totalPaginas && totalPaginas > 0) {
+                    paginaActual = totalPaginas;
+                }
+            } catch (NumberFormatException e) {
+                // Ignorar error
+            }
+        }
+        
+        // El bucle continuará y mostrará la bandeja actualizada automáticamente
+    }
+}
 
             private void juegoAdivinaNumero(BufferedReader entrada) throws IOException { 
     boolean jugando = true;
@@ -1822,80 +1823,6 @@ private void eliminarArchivo(BufferedReader entrada) throws IOException {
                 return password; // Fallback sin hash en caso de error
             }
         }
-    }  private static void crearArchivosEjemplo(String usuario) {
-    File directorioUsuario = new File("archivos/" + usuario);
     
-    // Solo crear archivos si el directorio no existe o está vacío
-    if (!directorioUsuario.exists() || (directorioUsuario.listFiles() != null && 
-        directorioUsuario.listFiles().length == 0)) {
-        
-        directorioUsuario.mkdirs();
-        
-        try {
-            // Crear documento1.txt
-            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "documento1.txt")))) {
-                pw.println("=== DOCUMENTO PERSONAL ===");
-                pw.println("Propietario: " + usuario);
-                pw.println("Fecha de creación: " + java.time.LocalDateTime.now().toString());
-                pw.println("");
-                pw.println("Este es un documento de ejemplo que contiene");
-                pw.println("información importante para el usuario " + usuario + ".");
-                pw.println("");
-                pw.println("Contenido:");
-                pw.println("- Lista de tareas pendientes");
-                pw.println("- Notas importantes");
-                pw.println("- Recordatorios personales");
-            }
-            
-            // Crear notas.txt
-            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "notas.txt")))) {
-                pw.println("=== MIS NOTAS PERSONALES ===");
-                pw.println("Usuario: " + usuario);
-                pw.println("");
-                pw.println("📝 TAREAS PENDIENTES:");
-                pw.println("- Completar proyecto de programación");
-                pw.println("- Revisar mensajes importantes");
-                pw.println("- Actualizar lista de contactos");
-                pw.println("- Organizar archivos del sistema");
-                pw.println("");
-                pw.println("💡 IDEAS:");
-                pw.println("- Implementar sistema de notificaciones");
-                pw.println("- Mejorar interfaz de usuario");
-                pw.println("- Añadir más funcionalidades");
-                pw.println("");
-                pw.println("📅 RECORDATORIOS:");
-                pw.println("- Hacer backup semanal");
-                pw.println("- Revisar logs del servidor");
-                pw.println("- Actualizar documentación");
-            }
-            
-            // Crear configuracion.txt
-            try (PrintWriter pw = new PrintWriter(new FileWriter(new File(directorioUsuario, "configuracion.txt")))) {
-                pw.println("# Archivo de configuración de usuario");
-                pw.println("# Generado automáticamente");
-                pw.println("");
-                pw.println("[USUARIO]");
-                pw.println("nombre=" + usuario);
-                pw.println("tipo=estandar");
-                pw.println("activo=true");
-                pw.println("");
-                pw.println("[PREFERENCIAS]");
-                pw.println("tema=oscuro");
-                pw.println("idioma=español");
-                pw.println("notificaciones=activadas");
-                pw.println("sonidos=desactivados");
-                pw.println("");
-                pw.println("[ARCHIVOS]");
-                pw.println("directorio_principal=archivos/" + usuario);
-                pw.println("backup_automatico=true");
-                pw.println("max_archivos=100");
-            }
-            
-            System.out.println("Archivos de ejemplo creados para: " + usuario);
-            
-        } catch (IOException e) {
-            System.err.println("Error creando archivos de ejemplo para " + usuario + ": " + e.getMessage());
-        }
-    }
 }
 }
