@@ -1820,7 +1820,7 @@ private void eliminarArchivo(BufferedReader entrada) throws IOException {
                 }
                 return sb.toString();
             } catch (NoSuchAlgorithmException e) {
-                return password; // Fallback sin hash en caso de error
+                return password; 
             }
         }
     
