@@ -628,10 +628,15 @@ private static void enviarMensajeACliente() {
         break;
     
     
-case "7": 
-    salida.println("Cerrando sesión. Hasta luego " + usuario);
-    logueado = false;
-    break;
+  case "7":  // NUEVO CASE
+        enviarArchivoAUsuario(entrada);
+        break;
+    case "8":  // Ajustar número de cerrar sesión
+        salida.println("Cerrando sesión. Hasta luego " + usuario);
+        logueado = false;
+        break;
+         default:
+        salida.println("Opción inválida. Seleccione 1-8.");
                         }
                     }
                 }
@@ -655,7 +660,7 @@ case "7":
             salida.println("Seleccione opción (1-3):");
         }
 
-     private void mostrarMenuPostLogin() {
+    private void mostrarMenuPostLogin() {
     salida.println("=== MENU PRINCIPAL ===");
     salida.println("1. Bandeja de entrada");
     salida.println("2. Jugar 'Adivina número'");
@@ -663,9 +668,9 @@ case "7":
     salida.println("4. Gestionar bloqueos");
     salida.println("5. Explorar archivos de otros usuarios");
     salida.println("6. Gestionar mis archivos");
-    salida.println("7. Cerrar sesión");
-    salida.println("Seleccione opción (1-7):");
-
+    salida.println("7. Enviar archivo a usuario");  // NUEVA OPCIÓN
+    salida.println("8. Cerrar sesión");
+    salida.println("Seleccione opción (1-8):");
 }
       private boolean login(BufferedReader entrada) throws IOException {
     salida.println("Ingrese usuario:");
@@ -1354,6 +1359,195 @@ private void copiarArchivo(File origen, File destino, String propietarioOriginal
         pw.println("");
         pw.println("--- FIN DEL CONTENIDO ORIGINAL ---");
         pw.println("# Descarga completada exitosamente");
+    }
+} 
+private void enviarArchivoAUsuario(BufferedReader entrada) throws IOException {
+    List<String> todosUsuarios = obtenerTodosLosUsuarios();
+    List<String> usuariosDisponibles = new ArrayList<>();
+
+    // Filtrar usuarios (no incluir el propio usuario)
+    for (String u : todosUsuarios) {
+        if (!u.equals(usuario)) {
+            usuariosDisponibles.add(u);
+        }
+    }
+
+    if (usuariosDisponibles.isEmpty()) {
+        salida.println("❌ No hay otros usuarios registrados en el sistema.");
+        return;
+    }
+
+    // Mostrar archivos disponibles del usuario actual
+    File directorioUsuario = new File("archivos/" + usuario);
+    File[] archivos = directorioUsuario.listFiles((dir, name) -> name.toLowerCase().endsWith(".txt"));
+    
+    if (archivos == null || archivos.length == 0) {
+        salida.println("❌ No tienes archivos .txt disponibles para enviar.");
+        salida.println("💡 Crea archivos primero en 'Gestionar mis archivos'");
+        return;
+    }
+
+    salida.println("=== TUS ARCHIVOS DISPONIBLES ===");
+    for (int i = 0; i < archivos.length; i++) {
+        long bytes = archivos[i].length();
+        String tamaño = formatearTamaño(bytes);
+        salida.println((i + 1) + ". 📄 " + archivos[i].getName() + " (" + tamaño + ")");
+    }
+
+    salida.println("\n📎 Ingresa el nombre del archivo a enviar (con extensión .txt):");
+    String nombreArchivo = entrada.readLine();
+    
+    if (nombreArchivo == null || nombreArchivo.trim().isEmpty()) {
+        salida.println("❌ Nombre de archivo vacío");
+        return;
+    }
+
+    nombreArchivo = nombreArchivo.trim();
+    if (!nombreArchivo.toLowerCase().endsWith(".txt")) {
+        salida.println("❌ Solo se pueden enviar archivos .txt");
+        return;
+    }
+
+    File archivoAEnviar = new File("archivos/" + usuario + "/" + nombreArchivo);
+    if (!archivoAEnviar.exists()) {
+        salida.println("❌ El archivo '" + nombreArchivo + "' no existe");
+        return;
+    }
+
+    // Mostrar usuarios disponibles
+    salida.println("\n=== USUARIOS DISPONIBLES ===");
+    for (int i = 0; i < usuariosDisponibles.size(); i++) {
+        String u = usuariosDisponibles.get(i);
+        String estado = clientes.containsKey(u) ? "(conectado)" : "(desconectado)";
+        salida.println((i + 1) + ". " + u + " " + estado);
+    }
+
+    salida.println("\n👤 Escribe el nombre del usuario destinatario:");
+    String destinatario = entrada.readLine();
+    
+    if (destinatario == null || destinatario.trim().isEmpty()) {
+        salida.println("❌ Nombre de destinatario vacío");
+        return;
+    }
+
+    destinatario = destinatario.trim();
+
+    // Verificar que el destinatario existe
+    if (!usuarioExisteEnArchivo(destinatario)) {
+        salida.println("❌ El usuario '" + destinatario + "' no existe");
+        return;
+    }
+
+    if (destinatario.equals(usuario)) {
+        salida.println("❌ No puedes enviarte archivos a ti mismo");
+        return;
+    }
+
+    // Verificar bloqueos
+    Set<String> bloqueadosPorDestinatario = usuariosBloqueados.get(destinatario);
+    if (bloqueadosPorDestinatario != null && bloqueadosPorDestinatario.contains(usuario)) {
+        salida.println("❌ No puedes enviar archivos a " + destinatario + " (te ha bloqueado)");
+        return;
+    }
+
+    // Confirmar envío
+    salida.println("\n📋 RESUMEN DEL ENVÍO:");
+    salida.println("📄 Archivo: " + nombreArchivo);
+    salida.println("📊 Tamaño: " + archivoAEnviar.length() + " bytes");
+    salida.println("👤 Destinatario: " + destinatario);
+    salida.println("\n¿Confirmar envío? (s/n):");
+
+    String confirmacion = entrada.readLine();
+    if (confirmacion == null || !confirmacion.trim().toLowerCase().startsWith("s")) {
+        salida.println("❌ Envío cancelado");
+        return;
+    }
+
+    // Realizar el envío
+    try {
+        File directorioDestinatario = new File("archivos/" + destinatario);
+        directorioDestinatario.mkdirs();
+        
+        // Generar nombre único para evitar sobrescrituras
+        String nombreDestino = generarNombreArchivoEnviado(usuario, nombreArchivo, destinatario);
+        File archivoDestino = new File(directorioDestinatario, nombreDestino);
+        
+        // Copiar archivo con metadatos
+        copiarArchivoEnviado(archivoAEnviar, archivoDestino, usuario);
+        
+        // Actualizar lista de archivos del destinatario
+        crearListaArchivos(destinatario);
+        
+        // Notificar al destinatario
+        String notificacion = "📨 NUEVO ARCHIVO RECIBIDO de " + usuario + ": " + nombreDestino;
+        guardarMensaje(destinatario, notificacion);
+        
+        salida.println("✅ Archivo enviado exitosamente a " + destinatario);
+        salida.println("📁 Guardado como: " + nombreDestino);
+        
+        // Notificación en tiempo real si está conectado
+        ClienteInfo clienteDestinatario = clientes.get(destinatario);
+        if (clienteDestinatario != null) {
+            clienteDestinatario.salida.println("\n🔔 NUEVO ARCHIVO RECIBIDO:");
+            clienteDestinatario.salida.println("📨 " + usuario + " te ha enviado: " + nombreDestino);
+            clienteDestinatario.salida.println("💾 Disponible en 'Gestionar mis archivos'");
+        }
+        
+    } catch (IOException e) {
+        salida.println("❌ Error enviando el archivo: " + e.getMessage());
+    }
+}
+
+// Método auxiliar para generar nombre único de archivo enviado
+private String generarNombreArchivoEnviado(String remitente, String nombreOriginal, String destinatario) {
+    String nombreBase = nombreOriginal;
+    String extension = "";
+    
+    int puntoIndex = nombreOriginal.lastIndexOf('.');
+    if (puntoIndex > 0) {
+        nombreBase = nombreOriginal.substring(0, puntoIndex);
+        extension = nombreOriginal.substring(puntoIndex);
+    }
+    
+    String nombreNuevo = "de_" + remitente + "_" + nombreBase + extension;
+    
+    File directorioDestinatario = new File("archivos/" + destinatario);
+    File archivoTest = new File(directorioDestinatario, nombreNuevo);
+    
+    int contador = 1;
+    while (archivoTest.exists()) {
+        nombreNuevo = "de_" + remitente + "_" + nombreBase + "_" + contador + extension;
+        archivoTest = new File(directorioDestinatario, nombreNuevo);
+        contador++;
+    }
+    
+    return nombreNuevo;
+}
+
+// Método para copiar archivo enviado con metadatos
+private void copiarArchivoEnviado(File origen, File destino, String remitente) throws IOException {
+    try (BufferedReader br = new BufferedReader(new FileReader(origen));
+         PrintWriter pw = new PrintWriter(new FileWriter(destino))) {
+        
+        // Agregar cabecera con metadatos del envío
+        pw.println("================================================================");
+        pw.println("ARCHIVO ENVIADO POR: " + remitente);
+        pw.println("RECIBIDO POR: " + destino.getParentFile().getName());
+        pw.println("FECHA DE ENVÍO: " + java.time.LocalDateTime.now().toString());
+        pw.println("ARCHIVO ORIGINAL: " + origen.getName());
+        pw.println("================================================================");
+        pw.println("");
+        
+        // Copiar contenido original
+        String linea;
+        while ((linea = br.readLine()) != null) {
+            pw.println(linea);
+        }
+        
+        pw.println("");
+        pw.println("================================================================");
+        pw.println("FIN DEL ARCHIVO ENVIADO POR: " + remitente);
+        pw.println("================================================================");
     }
 }
  private void gestionarMisArchivos(BufferedReader entrada) throws IOException {

@@ -115,49 +115,53 @@ public class Cliente {
         
         salida.println(opcion);
 
-        switch (opcion.trim()) {
-            case "1":
-                enMenu = false;
-                bandeja(entrada, salida, teclado);
-                enMenu = true; 
-                break;
-            case "2":
-                enMenu = false;
-                juego(entrada, salida, teclado);
-                enMenu = true;  
-                break;
-            case "3":
-                enMenu = false;
-                enviarMensaje(entrada, salida, teclado);
-                enMenu = true; 
-                break;
-            case "4":
-                enMenu = false;
-                gestionarBloqueos(entrada, salida, teclado);
-                enMenu = true;
-                break;
-            case "5":
-                enMenu = false;
-                explorarArchivos(entrada, salida, teclado);
-                enMenu = true;
-                break;
-            case "6":
-                enMenu = false;
-                gestionarMisArchivos(entrada, salida, teclado);
-                enMenu = true;
-                break;
-            case "7": 
-                String sesionCerrada = entrada.readLine();
-                System.out.println(sesionCerrada);
-                logueado = false;
-                usuarioActual = "";
-                break;
-            default:
-                String error = entrada.readLine();
-                System.out.println(error);
-        }
+      switch (opcion.trim()) {
+    case "1":
+        enMenu = false;
+        bandeja(entrada, salida, teclado);
+        enMenu = true; 
+        break;
+    case "2":
+        enMenu = false;
+        juego(entrada, salida, teclado);
+        enMenu = true;  
+        break;
+    case "3":
+        enMenu = false;
+        enviarMensaje(entrada, salida, teclado);
+        enMenu = true; 
+        break;
+    case "4":
+        enMenu = false;
+        gestionarBloqueos(entrada, salida, teclado);
+        enMenu = true;
+        break;
+    case "5":
+        enMenu = false;
+        explorarArchivos(entrada, salida, teclado);
+        enMenu = true;
+        break;
+    case "6":
+        enMenu = false;
+        gestionarMisArchivos(entrada, salida, teclado);
+        enMenu = true;
+        break;
+    case "7":
+    enMenu = false;
+    enviarArchivoAUsuario(entrada, salida, teclado);
+    enMenu = true;
+    break;
+    case "8":  // Ajustar cerrar sesión
+        String sesionCerrada = entrada.readLine();
+        System.out.println(sesionCerrada);
+        logueado = false;
+        usuarioActual = "";
+        break;
+    default:
+        String error = entrada.readLine();
+        System.out.println(error);
+}
     }
-
     private static boolean login(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
         String prompt = entrada.readLine();
         System.out.println(prompt);
@@ -493,7 +497,49 @@ public class Cliente {
             System.out.println(confirmacion);
         }
     }
-
+private static void enviarArchivoAUsuario(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
+    String linea;
+    
+    // Leer y mostrar todos los mensajes del servidor hasta que necesite input
+    while ((linea = entrada.readLine()) != null) {
+        if (linea.equals("DISCONNECT")) {
+            expulsado = true;
+            return;
+        }
+        
+        System.out.println(linea);
+        
+        // Detectar cuando el servidor pide input
+        if (linea.toLowerCase().contains("ingresa el nombre del archivo a enviar") ||
+            linea.toLowerCase().contains("escribe el nombre del usuario destinatario") ||
+            linea.toLowerCase().contains("¿confirmar envío?")) {
+            
+            System.out.print("> ");
+            String respuesta = teclado.readLine();
+            if (respuesta == null || expulsado) return;
+            
+            salida.println(respuesta);
+            
+            // Si cancela, salir
+            if (respuesta.trim().equalsIgnoreCase("n")) {
+                // Leer mensaje de cancelación
+                String cancelacion = entrada.readLine();
+                if (cancelacion != null) {
+                    System.out.println(cancelacion);
+                }
+                return;
+            }
+        }
+        
+        // Detectar fin del proceso
+        if (linea.contains("enviado exitosamente") || 
+            linea.contains("❌ Envío cancelado") ||
+            linea.contains("❌ No tienes archivos") ||
+            linea.contains("❌ No hay otros usuarios")) {
+            return;
+        }
+    }
+}
   private static void explorarArchivos(BufferedReader entrada, PrintWriter salida, BufferedReader teclado) throws IOException {
     while (!expulsado) {
         String linea;
