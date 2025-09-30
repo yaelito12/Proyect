@@ -1,0 +1,11 @@
+=== DOCUMENTO PERSONAL ===
+Propietario: yael
+Fecha de creación: 2025-09-27T14:26:17.099484300
+
+Este es un documento de ejemplo que contiene
+información importante para el usuario yael.
+
+Contenido:
+- Lista de tareas pendientes
+- Notas importantes
+- Recordatorios personales

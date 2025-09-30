@@ -1,0 +1,12 @@
+=== ARCHIVOS DE YAEL ===
+📂 Archivos .txt disponibles:
+
+📝 ARCHIVOS ORIGINALES:
+1. 📄 archiv.txt (16 bytes)
+2. 📄 configuracion.txt (311 bytes)
+3. 📄 documento1.txt (286 bytes)
+4. 📄 jajaja.txt (56 bytes)
+5. 📄 notas.txt (27 bytes)
+
+Para descargar un archivo, solicita el nombre exacto con extensión .txt
+Los archivos descargados incluyen metadatos del propietario original
