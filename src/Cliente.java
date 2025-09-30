@@ -514,7 +514,7 @@ public class Cliente {
             }
             
             if (linea.toLowerCase().contains("volviendo a la lista de usuarios")) {
-                break; // Continuar el bucle para mostrar la lista de usuarios nuevamente
+                break; 
             }
             
             if (linea.toLowerCase().contains("seleccione el número del usuario") ||
